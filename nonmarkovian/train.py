@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 
 from nonmarkovian.data import DFMEnhancerDataset, collate_pad, resolve_dfm_enhancer_root
 from nonmarkovian.device_utils import cuda_is_usable, resolve_device_arg
+from nonmarkovian.distributed_utils import (
+    barrier,
+    cleanup_process_group,
+    setup_process_group,
+    unwrap_ddp,
+)
 from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views
 from nonmarkovian.model import ActivityAuxHead, RoutedDenoiser
 from nonmarkovian.train_timing import tic, toc_ms
@@ -54,7 +62,12 @@ def main() -> None:
         default=500,
         help="Pad/cap sequence length for train + val data and for FBD sampling (single knob).",
     )
-    p.add_argument("--batch_size", type=int, default=128)
+    p.add_argument(
+        "--batch_size",
+        type=int,
+        default=128,
+        help="Train batch size per GPU. Global batch = this × world size when using torchrun.",
+    )
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--num_timesteps", type=int, default=32)
@@ -132,11 +145,20 @@ def main() -> None:
     )
     args = p.parse_args()
 
-    torch.manual_seed(args.seed)
-    device = resolve_device_arg(args.device)
+    ddp, rank, world_size, local_rank = setup_process_group()
+    if ddp and not torch.cuda.is_available():
+        cleanup_process_group()
+        raise SystemExit("Multi-GPU training uses NCCL and requires CUDA.")
+    if ddp:
+        atexit.register(cleanup_process_group)
+        device = torch.device(f"cuda:{local_rank}")
+    else:
+        device = resolve_device_arg(args.device)
 
-    use_wandb = bool(args.use_wandb and wandb is not None)
-    if args.use_wandb and wandb is None:
+    torch.manual_seed(args.seed)
+
+    use_wandb = bool(args.use_wandb and wandb is not None and rank == 0)
+    if rank == 0 and args.use_wandb and wandb is None:
         print("wandb not installed; pip install wandb. Continuing without W&B logging.")
 
     try:
@@ -166,8 +188,16 @@ def main() -> None:
         melanoma=args.dfm_melanoma,
         max_len=args.max_len,
     )
+    train_sampler: DistributedSampler | None = None
+    if ddp:
+        train_sampler = DistributedSampler(train_ds_dfm, shuffle=True)
     loader = DataLoader(
-        train_ds_dfm, batch_size=args.batch_size, shuffle=True, collate_fn=collate, num_workers=0
+        train_ds_dfm,
+        batch_size=args.batch_size,
+        shuffle=train_sampler is None,
+        sampler=train_sampler,
+        collate_fn=collate,
+        num_workers=0,
     )
     vb = args.val_batch_size if args.val_batch_size > 0 else args.batch_size
     val_loader = DataLoader(val_ds_dfm, batch_size=vb, shuffle=False, collate_fn=collate, num_workers=0)
@@ -193,23 +223,39 @@ def main() -> None:
     if args.aux_beta > 0 and num_labels is not None:
         aux_head = ActivityAuxHead(args.d_model, num_labels).to(device)
 
-    n_params = sum(p.numel() for p in model.parameters())
-    n_trainable_model = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    n_aux = sum(p.numel() for p in aux_head.parameters()) if aux_head else 0
-    n_trainable_aux = sum(p.numel() for p in aux_head.parameters() if p.requires_grad) if aux_head else 0
+    if ddp:
+        from torch.nn.parallel import DistributedDataParallel as DDP
 
-    print(
-        f"model parameters: total={n_params:,} ({n_params / 1e6:.3f}M)  "
-        f"trainable={n_trainable_model:,} ({n_trainable_model / 1e6:.3f}M)"
+        # loss_bal may be unused when --router_lambda_bal 0
+        model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+        if aux_head is not None:
+            aux_head = DDP(aux_head, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
+
+    n_params = sum(p.numel() for p in unwrap_ddp(model).parameters())
+    n_trainable_model = sum(p.numel() for p in unwrap_ddp(model).parameters() if p.requires_grad)
+    n_aux = sum(p.numel() for p in unwrap_ddp(aux_head).parameters()) if aux_head else 0
+    n_trainable_aux = (
+        sum(p.numel() for p in unwrap_ddp(aux_head).parameters() if p.requires_grad) if aux_head else 0
     )
-    if aux_head:
+
+    if rank == 0:
         print(
-            f"aux_head parameters: total={n_aux:,}  trainable={n_trainable_aux:,}  "
-            f"combined trainable={n_trainable_model + n_trainable_aux:,} ({(n_trainable_model + n_trainable_aux) / 1e6:.3f}M)"
+            f"model parameters: total={n_params:,} ({n_params / 1e6:.3f}M)  "
+            f"trainable={n_trainable_model:,} ({n_trainable_model / 1e6:.3f}M)"
         )
+        if aux_head:
+            print(
+                f"aux_head parameters: total={n_aux:,}  trainable={n_trainable_aux:,}  "
+                f"combined trainable={n_trainable_model + n_trainable_aux:,} ({(n_trainable_model + n_trainable_aux) / 1e6:.3f}M)"
+            )
+        if ddp:
+            print(
+                f"Distributed: world_size={world_size}  per-GPU batch={args.batch_size}  "
+                f"global_batch={args.batch_size * world_size}"
+            )
 
     fbcnn = None
-    if args.fbcnn_ckpt.strip():
+    if rank == 0 and args.fbcnn_ckpt.strip():
         from nonmarkovian.fbcnn import load_fbcnn_classifier
 
         fbcnn = load_fbcnn_classifier(
@@ -243,12 +289,27 @@ def main() -> None:
         wandb.summary["cuda_usable"] = cuda_is_usable()
         if device.type == "cuda":
             wandb.summary["cuda_device_name"] = torch.cuda.get_device_name(device)
+        wandb.summary["distributed"] = ddp
+        wandb.summary["world_size"] = world_size
         if fbcnn is not None:
             wandb.summary["fbd_embedding"] = "fbcnn"
             wandb.summary["fbcnn_ckpt"] = str(Path(args.fbcnn_ckpt).resolve())
 
     try:
-        _train_loop(args, device, ds, loader, val_loader, model, aux_head, fbcnn, use_wandb)
+        _train_loop(
+            args,
+            device,
+            ds,
+            loader,
+            val_loader,
+            model,
+            aux_head,
+            fbcnn,
+            use_wandb,
+            rank=rank,
+            ddp=ddp,
+            train_sampler=train_sampler,
+        )
     finally:
         if use_wandb:
             wandb.finish()
@@ -260,10 +321,14 @@ def _train_loop(
     ds,
     loader: DataLoader,
     val_loader: DataLoader | None,
-    model: RoutedDenoiser,
-    aux_head: ActivityAuxHead | None,
+    model: torch.nn.Module,
+    aux_head: ActivityAuxHead | torch.nn.Module | None,
     fbcnn,
     use_wandb: bool,
+    *,
+    rank: int,
+    ddp: bool,
+    train_sampler: DistributedSampler | None,
 ) -> None:
     if use_wandb:
         wandb.summary["dataset_size"] = len(ds)
@@ -279,6 +344,8 @@ def _train_loop(
 
     global_step = 0
     for epoch in range(args.epochs):
+        if train_sampler is not None:
+            train_sampler.set_epoch(epoch)
         model.train()
         if aux_head:
             aux_head.train()
@@ -405,8 +472,9 @@ def _train_loop(
                 wandb.log(log_payload, step=global_step)
 
         avg = total_loss / max(n_batches, 1)
-        print(f"epoch {epoch + 1}/{args.epochs}  loss={avg:.4f}")
-        if args.log_timing and n_batches > 0:
+        if rank == 0:
+            print(f"epoch {epoch + 1}/{args.epochs}  loss={avg:.4f}")
+        if args.log_timing and n_batches > 0 and rank == 0:
             print(
                 f"  timing_ms (batch avg): sample_all_views={sum_ms_views / n_batches:.2f}  "
                 f"forward={sum_ms_fwd / n_batches:.2f}  loss={sum_ms_loss / n_batches:.2f}  "
@@ -426,26 +494,27 @@ def _train_loop(
         if use_wandb:
             wandb.log({"train/epoch_loss_avg": avg, "epoch": epoch + 1}, step=global_step)
 
-        if val_loader is not None:
+        if val_loader is not None and rank == 0:
+            m = unwrap_ddp(model)
+            ah = unwrap_ddp(aux_head) if aux_head is not None else None
             vmetrics = validate_routed(
-                model,
+                m,
                 val_loader,
                 alphas,
                 device,
-                aux_head,
+                ah,
                 args,
                 epoch=epoch,
                 global_step=global_step,
             )
             msg = f"  val_loss={vmetrics['val/loss']:.4f}"
             if args.val_fbd_n > 0:
-                n_fbd = min(args.val_fbd_n, len(val_loader.dataset))
+                n_fbd = len(val_loader.dataset)
                 seq_len_fbd = (
                     args.max_len
                 )
-                if n_fbd >= 2:
-                    fbd = compute_fbd_routed(
-                        model,
+                fbd = compute_fbd_routed(
+                        m,
                         val_loader,
                         alphas,
                         device,
@@ -454,30 +523,34 @@ def _train_loop(
                         seq_len=seq_len_fbd,
                         epoch=epoch,
                         fbcnn=fbcnn,
-                    )
-                    vmetrics["val/fbd"] = fbd
-                    tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
-                    msg += f"  {tag}={fbd:.4f}"
-                else:
-                    print("  val_fbd_n too small or val set too small; skipping FBD")
+                )
+                vmetrics["val/fbd"] = fbd
+                tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
+                msg += f"  {tag}={fbd:.4f}"
+                
             print(msg)
             if use_wandb:
                 wandb.log(vmetrics, step=global_step)
+        if ddp:
+            barrier()
 
-    save_path = Path(args.save)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "model": model.state_dict(),
-        "args": vars(args),
-        "alphas": alphas.cpu(),
-    }
-    if aux_head:
-        payload["aux_head"] = aux_head.state_dict()
-    torch.save(payload, save_path)
-    print(f"saved {save_path}")
+    if rank == 0:
+        save_path = Path(args.save)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "model": unwrap_ddp(model).state_dict(),
+            "args": vars(args),
+            "alphas": alphas.cpu(),
+        }
+        if aux_head is not None:
+            payload["aux_head"] = unwrap_ddp(aux_head).state_dict()
+        torch.save(payload, save_path)
+        print(f"saved {save_path}")
 
-    if use_wandb:
-        wandb.summary["checkpoint_path"] = str(save_path.resolve())
+        if use_wandb:
+            wandb.summary["checkpoint_path"] = str(save_path.resolve())
+    if ddp:
+        barrier()
 
 
 if __name__ == "__main__":

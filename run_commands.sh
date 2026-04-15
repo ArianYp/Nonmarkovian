@@ -5,6 +5,10 @@
 #   bash run_commands.sh          # does nothing by itself — copy/paste sections below
 #
 # On the cluster (see Nonmarkovian.slurm): module load Python, source venv, then run the python lines.
+#
+# Multi-GPU (single node): torchrun sets WORLD_SIZE / RANK / LOCAL_RANK. --batch_size is per GPU.
+#   torchrun --standalone --nproc_per_node=4 -m nonmarkovian.train --dfm_enhancer auto ...
+#   torchrun --standalone --nproc_per_node=4 -m nonmarkovian.train_simple --dfm_enhancer auto ...
 
 # set -euo pipefail   # optional; enable if you turn commands below into active runs
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

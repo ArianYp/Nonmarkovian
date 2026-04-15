@@ -3,6 +3,8 @@
 #SBATCH --partition deeplearn
 #SBATCH --qos=gpgpudeeplearn
 #SBATCH --gres=gpu:1
+# Multi-GPU: e.g. #SBATCH --gres=gpu:4 then:
+#   torchrun --standalone --nproc_per_node=4 -m nonmarkovian.train --dfm_enhancer data_dfm ...
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=60GB
