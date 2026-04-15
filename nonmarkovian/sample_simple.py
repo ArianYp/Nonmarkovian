@@ -40,7 +40,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--checkpoint", type=str, required=True)
     p.add_argument("--batch", type=int, default=4)
-    p.add_argument("--seq_len", type=int, default=200)
+    p.add_argument("--seq_len", type=int, default=500)
     p.add_argument("--label", type=int, default=-1, help="conditioning class if model has labels; -1 = none")
     p.add_argument("--device", type=str, default="auto")
     p.add_argument("--out", type=str, default="samples_simple.txt")
@@ -53,7 +53,7 @@ def main() -> None:
         print("Warning: checkpoint may not be from train_simple.py (trainer != simple_discrete).")
 
     num_timesteps = int(cfg.get("num_timesteps", 32))
-    max_len = int(cfg.get("max_len", 256))
+    max_len = int(cfg.get("max_len", 500))
     seq_len = min(args.seq_len, max_len)
     num_classes = int(cfg.get("num_classes", 0))
 

@@ -11,15 +11,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 # -----------------------------------------------------------------------------
-# Quick dev (synthetic data, no val)
+# Quick dev (DFM pickles under data_dfm; uses pickle train + val)
 # -----------------------------------------------------------------------------
 # python -m nonmarkovian.train \
-#   --epochs 2 --batch_size 4 --synthetic_n 512 --seq_len 128 --max_len 128 \
+#   --dfm_enhancer auto --epochs 2 --batch_size 4 --max_len 500 \
 #   --num_timesteps 16 --d_model 64 --nhead 4 --dec_layers 4 --dim_ff 256 \
 #   --no-wandb --save checkpoints/routed_dev.pt
 
 # python -m nonmarkovian.train_simple \
-#   --epochs 2 --batch_size 4 --synthetic_n 512 --seq_len 128 --max_len 128 \
+#   --dfm_enhancer auto --epochs 2 --batch_size 4 --max_len 500 \
 #   --num_timesteps 16 --d_model 64 --nhead 4 --dec_layers 4 --dim_ff 256 \
 #   --no-wandb --save checkpoints/simple_dev.pt
 
@@ -28,24 +28,24 @@ cd "$ROOT"
 # Extract into this repo as: $ROOT/data_dfm/the_code/General/data/DeepFlyBrain_data.pkl
 #   curl -L -o Taskiran_et_al_code_models_data.tar.gz "https://zenodo.org/records/10184648/files/Taskiran_et_al_code_models_data.tar.gz?download=1"
 #   mkdir -p data_dfm && tar -xzf Taskiran_et_al_code_models_data.tar.gz -C data_dfm
-# Use --enhancer_dfm_root data_dfm  OR  --enhancer_dfm_root auto  (resolves ./data_dfm or repo data_dfm)
-# Melanoma: add --mel_enhancer (loads DeepMEL2_data.pkl in the same folder)
+# --dfm_enhancer data_dfm | auto | absolute path   (--dfm_melanoma for DeepMEL2)
+# Training always uses pickle train + val (no random split).
 # -----------------------------------------------------------------------------
 # python -m nonmarkovian.train \
-#   --enhancer_dfm_root "$ROOT/data_dfm" --enhancer_split train --max_len 200 \
+#   --dfm_enhancer "$ROOT/data_dfm" --max_len 500 \
 #   --batch_size 8 --epochs 5 --num_classes 0 \
 #   --save checkpoints/routed_dfm_fb.pt --no-wandb
 # python -m nonmarkovian.train_simple \
-#   --enhancer_dfm_root auto --enhancer_split train --max_len 200 \
+#   --dfm_enhancer auto --max_len 500 \
 #   --batch_size 8 --epochs 5 --num_classes 0 --save checkpoints/simple_dfm_fb.pt --no-wandb
 
 # -----------------------------------------------------------------------------
-# Routed model — real DNA + validation + FBD (FBCNN embeddings, fly brain 81 classes)
-# Adjust --data and --fbcnn_ckpt to your paths. Uncomment to run:
+# Routed model — DFM enhancer + validation + FBD (FBCNN embeddings, fly brain 81 classes)
+# --val_fbd_n is how many sequences feed FBD each epoch (not --max_len). Adjust --dfm_enhancer / --fbcnn_ckpt.
 # -----------------------------------------------------------------------------
 # python -m nonmarkovian.train \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 \
+#   --dfm_enhancer auto \
+#   --max_len 500 \
 #   --batch_size 8 \
 #   --epochs 5 \
 #   --lr 3e-4 \
@@ -59,11 +59,9 @@ cd "$ROOT"
 #   --dropout 0.1 \
 #   --router_tau 1.0 \
 #   --router_lambda_bal 0.01 \
-#   --val_split 0.1 \
 #   --val_batch_size 8 \
-#   --val_fbd_n 256 \
+#   --val_fbd_n 500 \
 #   --val_gen_batch 8 \
-#   --val_seed 0 \
 #   --fbcnn_ckpt FBCNN.ckpt \
 #   --fbcnn_num_cls 81 \
 #   --fbcnn_stacks 4 \
@@ -75,8 +73,8 @@ cd "$ROOT"
 # Simple DiT baseline (no router) — same validation / FBD hooks
 # -----------------------------------------------------------------------------
 # python -m nonmarkovian.train_simple \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 \
+#   --dfm_enhancer auto \
+#   --max_len 500 \
 #   --batch_size 8 \
 #   --epochs 5 \
 #   --lr 3e-4 \
@@ -88,11 +86,9 @@ cd "$ROOT"
 #   --cond_dim 0 \
 #   --time_freq_dim 256 \
 #   --dropout 0.1 \
-#   --val_split 0.1 \
 #   --val_batch_size 8 \
-#   --val_fbd_n 256 \
+#   --val_fbd_n 500 \
 #   --val_gen_batch 8 \
-#   --val_seed 0 \
 #   --fbcnn_ckpt FBCNN.ckpt \
 #   --fbcnn_num_cls 81 \
 #   --fbcnn_stacks 4 \
@@ -110,59 +106,59 @@ cd "$ROOT"
 
 # --- Small (~110M): routed ---
 # python -m nonmarkovian.train \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 --batch_size 4 --epochs 5 --lr 3e-4 --num_timesteps 32 \
+#   --dfm_enhancer auto \
+#   --max_len 500 --batch_size 4 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 768 --nhead 12 --dec_layers 12 --dim_ff 3072 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
 #   --router_tau 1.0 --router_lambda_bal 0.01 \
-#   --val_split 0.1 --val_fbd_n 256 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_fbd_n 500 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/routed_small.pt --wandb_run_name routed_small_110m
 
 # --- Small (~110M): simple DiT ---
 # python -m nonmarkovian.train_simple \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 --batch_size 4 --epochs 5 --lr 3e-4 --num_timesteps 32 \
+#   --dfm_enhancer auto \
+#   --max_len 500 --batch_size 4 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 768 --nhead 12 --dec_layers 12 --dim_ff 3072 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
-#   --val_split 0.1 --val_fbd_n 256 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_fbd_n 500 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/simple_small.pt --wandb_run_name simple_small_110m
 
 # --- Medium (~460M): routed ---
 # python -m nonmarkovian.train \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 --batch_size 2 --epochs 5 --lr 3e-4 --num_timesteps 32 \
+#   --dfm_enhancer auto \
+#   --max_len 500 --batch_size 2 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 1024 --nhead 16 --dec_layers 24 --dim_ff 4096 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
 #   --router_tau 1.0 --router_lambda_bal 0.01 \
-#   --val_split 0.1 --val_fbd_n 256 --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_fbd_n 500 --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/routed_medium.pt --wandb_run_name routed_medium_460m
 
 # --- Medium (~460M): simple DiT ---
 # python -m nonmarkovian.train_simple \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 --batch_size 2 --epochs 5 --lr 3e-4 --num_timesteps 32 \
+#   --dfm_enhancer auto \
+#   --max_len 500 --batch_size 2 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 1024 --nhead 16 --dec_layers 24 --dim_ff 4096 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
-#   --val_split 0.1 --val_fbd_n 256 --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_fbd_n 500 --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/simple_medium.pt --wandb_run_name simple_medium_460m
 
 # --- Large (~1.7B): routed ---
 # python -m nonmarkovian.train \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 --batch_size 1 --epochs 5 --lr 3e-4 --num_timesteps 32 \
+#   --dfm_enhancer auto \
+#   --max_len 500 --batch_size 1 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 1536 --nhead 24 --dec_layers 48 --dim_ff 6144 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
 #   --router_tau 1.0 --router_lambda_bal 0.01 \
-#   --val_split 0.1 --val_fbd_n 128 --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_fbd_n 500 --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/routed_large.pt --wandb_run_name routed_large_1p7b
 
 # --- Large (~1.7B): simple DiT ---
 # python -m nonmarkovian.train_simple \
-#   --data data/flybrain_enhancers_from_geo.txt \
-#   --max_len 256 --batch_size 1 --epochs 5 --lr 3e-4 --num_timesteps 32 \
+#   --dfm_enhancer auto \
+#   --max_len 500 --batch_size 1 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 1536 --nhead 24 --dec_layers 48 --dim_ff 6144 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
-#   --val_split 0.1 --val_fbd_n 128 --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_fbd_n 500 --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/simple_large.pt --wandb_run_name simple_large_1p7b
 
 # -----------------------------------------------------------------------------
@@ -170,11 +166,11 @@ cd "$ROOT"
 # -----------------------------------------------------------------------------
 # python -m nonmarkovian.sample \
 #   --checkpoint checkpoints/routed.pt \
-#   --batch 8 --seq_len 200 --device cuda --out samples_routed.txt
+#   --batch 8 --seq_len 500 --device cuda --out samples_routed.txt
 
 # python -m nonmarkovian.sample_simple \
 #   --checkpoint checkpoints/simple_discrete.pt \
-#   --batch 8 --seq_len 200 --device cuda --out samples_simple.txt
+#   --batch 8 --seq_len 500 --device cuda --out samples_simple.txt
 
 # Optional: class-conditional (if trained with --num_classes > 0)
 #   --label 0

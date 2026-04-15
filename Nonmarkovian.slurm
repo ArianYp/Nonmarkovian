@@ -23,21 +23,21 @@ source virtualenv/Python3.11.3/bin/activate
 # pip install flash-attn --no-build-isolation  # optional, falls back to SDPA
 
 # Submit from this directory (Nonmarkovian), same layout as EnergybasedDit/Energy.slurm
-# DFM enhancers (after tar extract to ./data_dfm): use --enhancer_dfm_root data_dfm or auto
+# DFM enhancers: --dfm_enhancer data_dfm (or auto)
 
 # --- Routed model (DiT + Boltzmann router) + DFM enhancer pickle (./data_dfm) ---
-# python -m nonmarkovian.train --enhancer_dfm_root data_dfm --enhancer_split train \
-#   --max_len 200 --batch_size 8 --epochs 5 --num_classes 0 --save checkpoints/routed_dfm.pt
+# python -m nonmarkovian.train --dfm_enhancer data_dfm \
+#   --max_len 500 --batch_size 8 --epochs 5 --num_classes 0 --save checkpoints/routed_dfm.pt
 
-# --- Routed model (DiT + Boltzmann router) + validation + FBD (FBCNN) ---
-# python -m nonmarkovian.train --data data/your.txt --val_split 0.1 --val_fbd_n 256 \
-#   --fbcnn_ckpt FBCNN.ckpt --max_len 256 --save checkpoints/routed.pt \
+# --- Routed model (DiT + Boltzmann router) + DFM + FBD (FBCNN) ---
+# python -m nonmarkovian.train --dfm_enhancer data_dfm --val_fbd_n 500 \
+#   --fbcnn_ckpt FBCNN.ckpt --max_len 500 --save checkpoints/routed.pt \
 #   --d_model 256 --nhead 8 --dec_layers 8 --dim_ff 1024 --cond_dim 256 \
 #   --router_tau 1.0 --router_lambda_bal 0.01
 
-# --- Simple baseline (DiT, no router) + same validation ---
-# python -m nonmarkovian.train_simple --data data/your.txt --val_split 0.1 --val_fbd_n 256 \
-#   --fbcnn_ckpt FBCNN.ckpt --max_len 256 --save checkpoints/simple_discrete.pt \
+# --- Simple baseline (DiT, no router) + DFM + same validation ---
+# python -m nonmarkovian.train_simple --dfm_enhancer data_dfm --val_fbd_n 500 \
+#   --fbcnn_ckpt FBCNN.ckpt --max_len 500 --save checkpoints/simple_discrete.pt \
 #   --d_model 256 --nhead 8 --dec_layers 8 --dim_ff 1024 --cond_dim 256 \
 #   --wandb_project nonmarkovian-simple
 

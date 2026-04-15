@@ -1,4 +1,4 @@
-"""Train non-Markovian routed discrete diffusion on DNA."""
+"""Train non-Markovian routed discrete diffusion on DFM enhancer pickles (Zenodo)."""
 
 from __future__ import annotations
 
@@ -9,18 +9,12 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from nonmarkovian.data import (
-    DFMEnhancerDataset,
-    LineDNADataset,
-    RandomDNADataset,
-    collate_pad,
-    resolve_enhancer_dfm_root,
-)
+from nonmarkovian.data import DFMEnhancerDataset, collate_pad, resolve_dfm_enhancer_root
 from nonmarkovian.device_utils import cuda_is_usable, resolve_device_arg
 from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views
 from nonmarkovian.model import ActivityAuxHead, RoutedDenoiser
 from nonmarkovian.train_timing import tic, toc_ms
-from nonmarkovian.validation import compute_fbd_routed, train_val_split, validate_routed
+from nonmarkovian.validation import compute_fbd_routed, validate_routed
 
 try:
     import wandb
@@ -43,29 +37,23 @@ def timestep_loss_weight(alphas: torch.Tensor, t_start: int) -> float:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--data", type=str, default="", help="Path to one-seq-per-line DNA file (optional)")
     p.add_argument(
-        "--enhancer_dfm_root",
+        "--dfm_enhancer",
         type=str,
-        default="",
-        help="Directory that contains the_code/ (Zenodo 10184648 → e.g. data_dfm). "
-        "Use 'auto' to pick ./data_dfm or <repo>/data_dfm if DeepFlyBrain pickle exists.",
+        default="auto",
+        help="DFM Zenodo enhancer root (directory with the_code/). Use data_dfm, auto, or an absolute path.",
     )
     p.add_argument(
-        "--enhancer_split",
-        type=str,
-        default="train",
-        choices=("train", "val", "test"),
-        help="Official train/val/test split inside the DFM pickle",
-    )
-    p.add_argument(
-        "--mel_enhancer",
+        "--dfm_melanoma",
         action="store_true",
-        help="Load DeepMEL2_data.pkl (melanoma) instead of DeepFlyBrain_data.pkl",
+        help="Load DeepMEL2 (melanoma) instead of fly brain.",
     )
-    p.add_argument("--synthetic_n", type=int, default=5000, help="Samples if --data empty")
-    p.add_argument("--seq_len", type=int, default=200)
-    p.add_argument("--max_len", type=int, default=256)
+    p.add_argument(
+        "--max_len",
+        type=int,
+        default=500,
+        help="Pad/cap sequence length for train + val data and for FBD sampling (single knob).",
+    )
     p.add_argument("--batch_size", type=int, default=128)
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=3e-4)
@@ -120,26 +108,15 @@ def main() -> None:
     p.add_argument("--no-wandb", dest="use_wandb", action="store_false", help="Disable W&B")
     p.add_argument("--wandb_project", type=str, default="nonmarkovian", help="W&B project name")
     p.add_argument("--wandb_run_name", type=str, default="", help="Optional W&B run name")
-    p.add_argument(
-        "--val_split",
-        type=float,
-        default=0.0,
-        help="Fraction of data for validation (0 = train on full dataset, no val)",
-    )
     p.add_argument("--val_batch_size", type=int, default=0, help="Val batch size (0 = use --batch_size)")
     p.add_argument(
         "--val_fbd_n",
         type=int,
         default=0,
-        help="Per-epoch FBD: compare this many real vs generated sequences (0 = skip FBD; needs val_split > 0)",
+        help="Per-epoch FBD: number of real/generated sequence *pairs* to compare (0 = skip). "
+        "Not sequence length; generation length is --max_len.",
     )
     p.add_argument("--val_gen_batch", type=int, default=8, help="Batch size when generating sequences for FBD")
-    p.add_argument(
-        "--val_seed",
-        type=int,
-        default=0,
-        help="Seed for train/val split (independent of --seed)",
-    )
     p.add_argument(
         "--fbcnn_ckpt",
         type=str,
@@ -163,42 +140,37 @@ def main() -> None:
         print("wandb not installed; pip install wandb. Continuing without W&B logging.")
 
     try:
-        enh_root_resolved = resolve_enhancer_dfm_root(args.enhancer_dfm_root)
+        dfm_root_resolved = resolve_dfm_enhancer_root(args.dfm_enhancer, melanoma=args.dfm_melanoma)
     except FileNotFoundError as e:
         raise SystemExit(str(e)) from e
+    if not dfm_root_resolved:
+        raise SystemExit("Could not resolve --dfm_enhancer (try auto with data_dfm/ from Zenodo 10184648).")
 
-    if enh_root_resolved and args.data.strip():
-        raise SystemExit("Use only one of --enhancer_dfm_root or --data.")
-
-    if enh_root_resolved:
-        args.enhancer_dfm_root = enh_root_resolved
-        ds = DFMEnhancerDataset(
-            enh_root_resolved,
-            args.enhancer_split,
-            mel_enhancer=args.mel_enhancer,
-            max_len=args.max_len,
-        )
-        if args.num_classes <= 0:
-            args.num_classes = ds.num_classes
-    elif args.data:
-        ds = LineDNADataset(args.data, max_len=args.max_len)
-        if args.num_classes <= 0 and any("label" not in ds[i] for i in range(min(len(ds), 1))):
-            pass  # unlabeled ok
-    else:
-        nc = args.num_classes if args.num_classes > 0 else 0
-        ds = RandomDNADataset(args.synthetic_n, args.seq_len, num_classes=nc, seed=args.seed)
+    args.dfm_enhancer = dfm_root_resolved
+    train_ds_dfm = DFMEnhancerDataset(
+        dfm_root_resolved,
+        "train",
+        melanoma=args.dfm_melanoma,
+        max_len=args.max_len,
+    )
+    if args.num_classes <= 0:
+        args.num_classes = train_ds_dfm.num_classes
+    ds = train_ds_dfm
 
     def collate(b):
         return collate_pad(b)
 
-    val_loader = None
-    if args.val_split > 0.0:
-        train_ds, val_ds = train_val_split(ds, args.val_split, args.val_seed)
-        loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, collate_fn=collate, num_workers=0)
-        vb = args.val_batch_size if args.val_batch_size > 0 else args.batch_size
-        val_loader = DataLoader(val_ds, batch_size=vb, shuffle=False, collate_fn=collate, num_workers=0)
-    else:
-        loader = DataLoader(ds, batch_size=args.batch_size, shuffle=True, collate_fn=collate, num_workers=0)
+    val_ds_dfm = DFMEnhancerDataset(
+        dfm_root_resolved,
+        "val",
+        melanoma=args.dfm_melanoma,
+        max_len=args.max_len,
+    )
+    loader = DataLoader(
+        train_ds_dfm, batch_size=args.batch_size, shuffle=True, collate_fn=collate, num_workers=0
+    )
+    vb = args.val_batch_size if args.val_batch_size > 0 else args.batch_size
+    val_loader = DataLoader(val_ds_dfm, batch_size=vb, shuffle=False, collate_fn=collate, num_workers=0)
 
     num_labels = args.num_classes if args.num_classes > 0 else None
     cond_dim = args.cond_dim if args.cond_dim > 0 else None
@@ -468,7 +440,9 @@ def _train_loop(
             msg = f"  val_loss={vmetrics['val/loss']:.4f}"
             if args.val_fbd_n > 0:
                 n_fbd = min(args.val_fbd_n, len(val_loader.dataset))
-                seq_len_fbd = args.max_len if args.data else min(args.max_len, args.seq_len)
+                seq_len_fbd = (
+                    args.max_len
+                )
                 if n_fbd >= 2:
                     fbd = compute_fbd_routed(
                         model,
