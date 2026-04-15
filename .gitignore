@@ -1,0 +1,11 @@
+# Local / generated
+cache/
+__pycache__/
+*.py[cod]
+checkpoints/
+data/
+data_dfm/
+GSE163697_RAW/
+virtualenv/
+wandb/
+*.out
