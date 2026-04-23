@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 import math
+import re
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -165,15 +167,29 @@ def _strip_prefix(state_dict: dict[str, torch.Tensor], prefixes: tuple[str, ...]
     return out
 
 
+def _conv_layer_count_in_state_dict(state_dict: dict[str, torch.Tensor]) -> int | None:
+    """Return number of ``convs.{i}`` blocks in a checkpoint (e.g. 5 for one stack in fly-brain FBCNN)."""
+    best = -1
+    for k in state_dict:
+        m = re.match(r"^convs\.(\d+)\.weight$", k)
+        if m:
+            best = max(best, int(m.group(1)))
+    return (best + 1) if best >= 0 else None
+
+
 def load_fbcnn_classifier(
     ckpt_path: str | Path,
     device: torch.device,
     *,
     num_cls: int = 81,
-    num_cnn_stacks: int = 4,
+    num_cnn_stacks: int = 1,
     alphabet_size: int = 4,
 ) -> CNNModel:
-    """Load frozen CNNModel(alphabet_size, num_cls, num_cnn_stacks, classifier=True) from a PyTorch checkpoint."""
+    """Load frozen CNNModel(alphabet_size, num_cls, num_cnn_stacks, classifier=True) from a PyTorch checkpoint.
+
+    Fly-brain ``FBCNN.ckpt`` ships **one** stack (5 conv layers: indices0..4). Using ``num_cnn_stacks=4``
+    leaves most layers randomly initialized and **collapses Fréchet / FBD** to near zero vs real data.
+    """
     path = Path(ckpt_path)
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -185,6 +201,16 @@ def load_fbcnn_classifier(
         ("backbone.", "model.backbone.", "model.", "net.", "classifier.", "fbcnn."),
     )
 
+    n_ckpt_convs = _conv_layer_count_in_state_dict(raw_sd)
+    n_model_convs = 5 * num_cnn_stacks
+    if n_ckpt_convs is not None and n_ckpt_convs != n_model_convs:
+        warnings.warn(
+            f"FBCNN checkpoint has {n_ckpt_convs} conv layers but CNNModel(num_cnn_stacks={num_cnn_stacks}) "
+            f"has {n_model_convs}. Uninitialized layers make FBD meaningless (often ~0 for random vs real). "
+            f"Use --fbcnn_stacks {n_ckpt_convs // 5} if the checkpoint uses stacks of 5 convs each.",
+            stacklevel=2,
+        )
+
     model = CNNModel(alphabet_size, num_cls, num_cnn_stacks, classifier=True).to(device)
     inc = model.load_state_dict(raw_sd, strict=False)
     missing = list(inc.missing_keys)
@@ -193,8 +219,6 @@ def load_fbcnn_classifier(
     for p in model.parameters():
         p.requires_grad_(False)
     if missing or unexpected:
-        import warnings
-
         warnings.warn(
             f"FBCNN load_state_dict incomplete: missing={len(missing)} unexpected={len(unexpected)} "
             f"(first missing: {missing[:5]}, first unexpected: {unexpected[:5]})",

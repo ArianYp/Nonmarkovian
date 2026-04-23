@@ -1,0 +1,22 @@
+ERROR: Unable to locate a modulefile for 'GCCcore/11.3.0'
+ERROR: Unable to locate a modulefile for 'Python/3.11.3'
+usage: train.py [-h] [--data DATA] [--enhancer_dfm_root ENHANCER_DFM_ROOT]
+                [--enhancer_split {train,val,test}] [--mel_enhancer]
+                [--synthetic_n SYNTHETIC_N] [--seq_len SEQ_LEN]
+                [--max_len MAX_LEN] [--batch_size BATCH_SIZE]
+                [--epochs EPOCHS] [--lr LR] [--num_timesteps NUM_TIMESTEPS]
+                [--router_topk ROUTER_TOPK] [--router_k ROUTER_K]
+                [--router_tau ROUTER_TAU]
+                [--router_lambda_bal ROUTER_LAMBDA_BAL] [--d_model D_MODEL]
+                [--nhead NHEAD] [--dec_layers DEC_LAYERS] [--dim_ff DIM_FF]
+                [--cond_dim COND_DIM] [--time_freq_dim TIME_FREQ_DIM]
+                [--dropout DROPOUT] [--num_classes NUM_CLASSES]
+                [--aux_beta AUX_BETA] [--device DEVICE] [--save SAVE]
+                [--seed SEED] [--wandb] [--no-wandb]
+                [--wandb_project WANDB_PROJECT]
+                [--wandb_run_name WANDB_RUN_NAME] [--val_split VAL_SPLIT]
+                [--val_batch_size VAL_BATCH_SIZE] [--val_fbd_n VAL_FBD_N]
+                [--val_gen_batch VAL_GEN_BATCH] [--val_seed VAL_SEED]
+                [--fbcnn_ckpt FBCNN_CKPT] [--fbcnn_num_cls FBCNN_NUM_CLS]
+                [--fbcnn_stacks FBCNN_STACKS] [--log_timing]
+train.py: error: unrecognized arguments: --dfm_enhancer auto

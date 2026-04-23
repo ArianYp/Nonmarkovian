@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import math
 from pathlib import Path
 
 import torch
@@ -19,10 +20,18 @@ from nonmarkovian.distributed_utils import (
     setup_process_group,
     unwrap_ddp,
 )
-from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views
-from nonmarkovian.model import ActivityAuxHead, RoutedDenoiser
+from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views_bernoulli
+from nonmarkovian.model import ActivityAuxHead, RoutedDenoiser, RoutedDenoiserCNN
 from nonmarkovian.train_timing import tic, toc_ms
-from nonmarkovian.validation import compute_fbd_routed, validate_routed
+from nonmarkovian.validation import (
+    _use_conditional_sampling_labels,
+    chance_validation_baselines,
+    compute_fbd_routed,
+    compute_fbd_uniform_random_baseline,
+    print_epoch_diffusion_dna_samples,
+    print_val_and_random_dna_preview,
+    validate_routed,
+)
 
 try:
     import wandb
@@ -36,15 +45,48 @@ def _to_float(x: torch.Tensor | float) -> float:
     return float(x)
 
 
-def timestep_loss_weight(alphas: torch.Tensor, t_start: int) -> float:
-    """λ_t from schedule increment (paper: corruption-based weighting)."""
-    if t_start == 0:
-        return float(alphas[0].item())
-    return float((alphas[t_start] - alphas[t_start - 1]).clamp(min=1e-6).item())
+class _EMA:
+    """Simple parameter EMA with temporary swap for evaluation (matches train_simple._EMA)."""
+
+    def __init__(self, params: list[torch.nn.Parameter], decay: float):
+        self.params = [p for p in params if p.requires_grad]
+        self.decay = float(decay)
+        self.shadow = [p.detach().clone() for p in self.params]
+        self.backup: list[torch.Tensor] | None = None
+
+    @torch.no_grad()
+    def update(self) -> None:
+        one_minus = 1.0 - self.decay
+        for s, p in zip(self.shadow, self.params):
+            s.mul_(self.decay).add_(p.detach(), alpha=one_minus)
+
+    @torch.no_grad()
+    def store(self) -> None:
+        self.backup = [p.detach().clone() for p in self.params]
+
+    @torch.no_grad()
+    def copy_to(self) -> None:
+        for p, s in zip(self.params, self.shadow):
+            p.data.copy_(s)
+
+    @torch.no_grad()
+    def restore(self) -> None:
+        if self.backup is None:
+            return
+        for p, b in zip(self.params, self.backup):
+            p.data.copy_(b)
+        self.backup = None
 
 
-def main() -> None:
-    p = argparse.ArgumentParser()
+def _parse_train_args() -> argparse.Namespace:
+    """Parse CLI: DiT-only hyperparameters are accepted only when ``--backbone dit``."""
+    p = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        epilog=(
+            "DiT-only flags (--nhead, --dec_layers, --dim_ff, --dropout, --cond_dim, --time_freq_dim) "
+            "are only valid with --backbone dit; omit them for the default CNN backbone."
+        ),
+    )
     p.add_argument(
         "--dfm_enhancer",
         type=str,
@@ -70,7 +112,72 @@ def main() -> None:
     )
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--lr", type=float, default=3e-4)
+    p.add_argument(
+        "--ema_decay",
+        type=float,
+        default=0.9999,
+        help="EMA decay for evaluation-time weight averaging (0 disables EMA).",
+    )
     p.add_argument("--num_timesteps", type=int, default=32)
+    p.add_argument(
+        "--bernoulli_scheduler",
+        type=str,
+        default="loglinear",
+        choices=("loglinear", "linear"),
+        help="SLM-style Bernoulli corruption scheduler for routed history views.",
+    )
+    p.add_argument(
+        "--without_T",
+        action="store_true",
+        help="Do not scale new_diff loss by T (matches SLM `training.without_T`).",
+    )
+    p.add_argument(
+        "--cond_drop_prob",
+        type=float,
+        default=0.3,
+        help="Classifier-free label drop probability (SLM new_diff uses 0.3).",
+    )
+    p.add_argument(
+        "--val_new_diff_calculate",
+        type=str,
+        default="full",
+        choices=("full", "training"),
+        help="Validation new_diff metric: SLM-style inference `full` or training-style NLL.",
+    )
+    p.add_argument(
+        "--val_no_history",
+        action="store_true",
+        default=False,
+        help="DEPRECATED / no-op. validate_routed now always logs both "
+        "val/loss (with real-x0 history, training distribution) and "
+        "val/loss_no_history (uniform-history, SLM-comparable). The "
+        "best-checkpoint criterion uses val/loss (with history).",
+    )
+    p.add_argument(
+        "--no_val_no_history",
+        dest="val_no_history",
+        action="store_false",
+        help="DEPRECATED / no-op (see --val_no_history).",
+    )
+    p.add_argument(
+        "--history_mode",
+        type=str,
+        default="trajectory",
+        choices=("trajectory", "uniform", "bernoulli_hat"),
+        help=(
+            "History mode for routed reverse sampling (FBD / previews). 'trajectory' (default) "
+            "feeds the model the running x_t simplices it just visited; 'uniform' keeps non-current "
+            "slots at 1/C (matches --val_no_history validation); 'bernoulli_hat' is the legacy "
+            "Bernoulli-of-hat_x0 mode."
+        ),
+    )
+    p.add_argument(
+        "--num_timesteps_sample",
+        type=int,
+        default=0,
+        help="Reverse steps for FBD / DNA preview / checkpoint sampling (0 = same as --num_timesteps). "
+        "Training views always use --num_timesteps.",
+    )
     p.add_argument(
         "--router_topk",
         type=int,
@@ -92,23 +199,52 @@ def main() -> None:
     p.add_argument(
         "--router_lambda_bal",
         type=float,
-        default=0.0,
+        default=0.1,
         help="Weight λ for load-balancing loss (Switch-style; 0 = off)",
     )
-    p.add_argument("--d_model", type=int, default=32)
-    p.add_argument("--nhead", type=int, default=8)
-    p.add_argument("--dec_layers", type=int, default=6, help="Number of DDiT blocks (single stack)")
-    p.add_argument("--dim_ff", type=int, default=1024)
-    p.add_argument("--cond_dim", type=int, default=0, help="AdaLN conditioning dim (0 = same as d_model)")
     p.add_argument(
-        "--time_freq_dim",
-        type=int,
-        default=256,
-        help="Sinusoidal timestep embedding dim before MLP (baseline often uses 128)",
+        "--backbone",
+        type=str,
+        default="cnn",
+        choices=("dit", "cnn"),
+        help='Denoiser backbone: "cnn" matches SLM enhancer CNNModel; "dit" is the prior DiT stack.',
     )
-    p.add_argument("--dropout", type=float, default=0.1)
-    p.add_argument("--num_classes", type=int, default=0, help=">0 enables label embedding + optional aux head")
-    p.add_argument("--aux_beta", type=float, default=0.0, help="Weight for activity aux CE (needs labels)")
+    p.add_argument(
+        "--cnn_stacks",
+        type=int,
+        default=4,
+        help="When backbone=cnn: CNNModel num_cnn_stacks (5 conv layers per stack; SLM fly enhancer uses 4).",
+    )
+    p.add_argument(
+        "--router_conv_kernel",
+        type=int,
+        default=1,
+        help="When backbone=cnn: router W_phi Conv1d kernel size (odd).",
+    )
+    p.add_argument(
+        "--router_out_channels",
+        type=int,
+        default=128,
+        help="When backbone=cnn: router W_phi Conv1d out channels; score scale uses √(L·C_out).",
+    )
+    p.add_argument("--d_model", type=int, default=32)
+    p.add_argument(
+        "--num_classes",
+        type=int,
+        default=0,
+        help="0 = infer from dataset (conditional); >0 = that many classes. --no_labels forces unconditional.",
+    )
+    p.add_argument(
+        "--no_labels",
+        action="store_true",
+        help="Unconditional: no class embedding or aux head; ignore labels even if the dataset has them.",
+    )
+    p.add_argument(
+        "--aux_beta",
+        type=float,
+        default=0.0,
+        help="Weight for activity aux CE on DiT token hidden states (--backbone dit only; CNN matches SLM, no aux head).",
+    )
     p.add_argument(
         "--device",
         type=str,
@@ -122,14 +258,19 @@ def main() -> None:
     p.add_argument("--wandb_project", type=str, default="nonmarkovian", help="W&B project name")
     p.add_argument("--wandb_run_name", type=str, default="", help="Optional W&B run name")
     p.add_argument("--val_batch_size", type=int, default=0, help="Val batch size (0 = use --batch_size)")
-    p.add_argument(
-        "--val_fbd_n",
-        type=int,
-        default=0,
-        help="Per-epoch FBD: number of real/generated sequence *pairs* to compare (0 = skip). "
-        "Not sequence length; generation length is --max_len.",
-    )
     p.add_argument("--val_gen_batch", type=int, default=8, help="Batch size when generating sequences for FBD")
+    p.add_argument(
+        "--val_epoch_freq",
+        type=int,
+        default=1,
+        help="Run validation loss (validate_routed) every N epochs (default 1 = every epoch).",
+    )
+    p.add_argument(
+        "--fbd_epoch_freq",
+        type=int,
+        default=5,
+        help="Run FBD metric + DNA preview every N epochs (default 5; set 1 for every epoch).",
+    )
     p.add_argument(
         "--fbcnn_ckpt",
         type=str,
@@ -137,13 +278,52 @@ def main() -> None:
         help="Path to fly-brain CNN checkpoint (FBCNN.ckpt) for FBD embeddings; empty = use denoiser encoder",
     )
     p.add_argument("--fbcnn_num_cls", type=int, default=81, help="Classifier num classes (fly brain: 81)")
-    p.add_argument("--fbcnn_stacks", type=int, default=4, help="num_cnn_stacks for CNNModel(4, num_cls, stacks)")
+    p.add_argument(
+        "--fbcnn_stacks",
+        type=int,
+        default=1,
+        help="CNNModel stacks (5 conv layers per stack). Fly-brain FBCNN.ckpt has 1 stack; "
+        "using 4 with that ckpt leaves most weights random and FBD near0.",
+    )
     p.add_argument(
         "--log_timing",
         action="store_true",
         help="Log per-batch wall times (ms, CUDA-synced): views, forward, loss, backward",
     )
-    args = p.parse_args()
+    args, unknown = p.parse_known_args()
+
+    dit_p = argparse.ArgumentParser(add_help=False)
+    dit_p.add_argument("--nhead", type=int, default=8)
+    dit_p.add_argument("--dec_layers", type=int, default=6, help="Number of DDiT blocks (single stack)")
+    dit_p.add_argument("--dim_ff", type=int, default=1024)
+    dit_p.add_argument("--cond_dim", type=int, default=0, help="AdaLN conditioning dim (0 = same as d_model)")
+    dit_p.add_argument(
+        "--time_freq_dim",
+        type=int,
+        default=256,
+        help="Sinusoidal timestep embedding dim before MLP (baseline often uses 128)",
+    )
+    dit_p.add_argument("--dropout", type=float, default=0.1)
+
+    if args.backbone == "dit":
+        d_extra, tail = dit_p.parse_known_args(unknown)
+        if tail:
+            p.error("unrecognized arguments: " + " ".join(tail))
+        args = argparse.Namespace(**{**vars(args), **vars(d_extra)})
+    elif unknown:
+        p.error(
+            "unrecognized arguments (with --backbone cnn, omit DiT-only flags "
+            "--nhead, --dec_layers, --dim_ff, --dropout, --cond_dim, --time_freq_dim): "
+            + " ".join(unknown)
+        )
+
+    return args
+
+
+def main() -> None:
+    args = _parse_train_args()
+    if args.num_timesteps_sample <= 0:
+        args.num_timesteps_sample = args.num_timesteps
 
     ddp, rank, world_size, local_rank = setup_process_group()
     if ddp and not torch.cuda.is_available():
@@ -175,7 +355,9 @@ def main() -> None:
         melanoma=args.dfm_melanoma,
         max_len=args.max_len,
     )
-    if args.num_classes <= 0:
+    if args.no_labels:
+        args.num_classes = 0
+    elif args.num_classes <= 0:
         args.num_classes = train_ds_dfm.num_classes
     ds = train_ds_dfm
 
@@ -185,6 +367,12 @@ def main() -> None:
     val_ds_dfm = DFMEnhancerDataset(
         dfm_root_resolved,
         "val",
+        melanoma=args.dfm_melanoma,
+        max_len=args.max_len,
+    )
+    test_ds_dfm = DFMEnhancerDataset(
+        dfm_root_resolved,
+        "test",
         melanoma=args.dfm_melanoma,
         max_len=args.max_len,
     )
@@ -200,27 +388,51 @@ def main() -> None:
         num_workers=0,
     )
     vb = args.val_batch_size if args.val_batch_size > 0 else args.batch_size
-    val_loader = DataLoader(val_ds_dfm, batch_size=vb, shuffle=False, collate_fn=collate, num_workers=0)
+    val_sampler: DistributedSampler | None = None
+    if ddp:
+        val_sampler = DistributedSampler(val_ds_dfm, shuffle=False, drop_last=False)
+    val_loader = DataLoader(
+        val_ds_dfm,
+        batch_size=vb,
+        shuffle=False,
+        sampler=val_sampler,
+        collate_fn=collate,
+        num_workers=0,
+    )
+    test_loader = DataLoader(test_ds_dfm, batch_size=vb, shuffle=False, collate_fn=collate, num_workers=0)
 
     num_labels = args.num_classes if args.num_classes > 0 else None
-    cond_dim = args.cond_dim if args.cond_dim > 0 else None
-    model = RoutedDenoiser(
-        d_model=args.d_model,
-        nhead=args.nhead,
-        dec_layers=args.dec_layers,
-        dim_ff=args.dim_ff,
-        dropout=args.dropout,
-        max_len=args.max_len,
-        num_timesteps=args.num_timesteps,
-        num_labels=num_labels,
-        cond_dim=cond_dim,
-        router_tau=args.router_tau,
-        router_k=args.router_k,
-        time_freq_dim=args.time_freq_dim,
-    ).to(device)
+    if args.backbone == "cnn":
+        model = RoutedDenoiserCNN(
+            d_model=args.d_model,
+            max_len=args.max_len,
+            num_timesteps=args.num_timesteps,
+            num_labels=num_labels,
+            router_tau=args.router_tau,
+            router_k=args.router_k,
+            num_cnn_stacks=args.cnn_stacks,
+            router_conv_kernel=args.router_conv_kernel,
+            router_out_channels=args.router_out_channels,
+        ).to(device)
+    else:
+        cond_dim = args.cond_dim if args.cond_dim > 0 else None
+        model = RoutedDenoiser(
+            d_model=args.d_model,
+            nhead=args.nhead,
+            dec_layers=args.dec_layers,
+            dim_ff=args.dim_ff,
+            dropout=args.dropout,
+            max_len=args.max_len,
+            num_timesteps=args.num_timesteps,
+            num_labels=num_labels,
+            cond_dim=cond_dim,
+            router_tau=args.router_tau,
+            router_k=args.router_k,
+            time_freq_dim=args.time_freq_dim,
+        ).to(device)
 
     aux_head: ActivityAuxHead | None = None
-    if args.aux_beta > 0 and num_labels is not None:
+    if args.backbone == "dit" and args.aux_beta > 0 and num_labels is not None:
         aux_head = ActivityAuxHead(args.d_model, num_labels).to(device)
 
     if ddp:
@@ -302,6 +514,7 @@ def main() -> None:
             ds,
             loader,
             val_loader,
+            test_loader,
             model,
             aux_head,
             fbcnn,
@@ -321,6 +534,7 @@ def _train_loop(
     ds,
     loader: DataLoader,
     val_loader: DataLoader | None,
+    test_loader: DataLoader | None,
     model: torch.nn.Module,
     aux_head: ActivityAuxHead | torch.nn.Module | None,
     fbcnn,
@@ -334,14 +548,72 @@ def _train_loop(
         wandb.summary["dataset_size"] = len(ds)
         if val_loader is not None:
             wandb.summary["val_dataset_size"] = len(val_loader.dataset)
+        if test_loader is not None:
+            wandb.summary["test_dataset_size"] = len(test_loader.dataset)
 
     alphas = cosine_alpha_schedule(args.num_timesteps, device=device)
+    alphas_sample = cosine_alpha_schedule(args.num_timesteps_sample, device=device)
     opt = torch.optim.AdamW(
         list(model.parameters()) + (list(aux_head.parameters()) if aux_head else []),
         lr=args.lr,
         weight_decay=0.01,
     )
+    ema: _EMA | None = None
+    if float(getattr(args, "ema_decay", 0.0)) > 0.0:
+        ema_params = list(unwrap_ddp(model).parameters())
+        if aux_head is not None:
+            ema_params += list(unwrap_ddp(aux_head).parameters())
+        ema = _EMA(ema_params, decay=float(args.ema_decay))
 
+    if rank == 0:
+        if val_loader is not None:
+            print_val_and_random_dna_preview(
+                val_loader.dataset,
+                max_len=args.max_len,
+                base_seed=args.seed,
+                n=4,
+            )
+        aux_for_chance = args.aux_beta if args.backbone == "dit" else 0.0
+        chance = chance_validation_baselines(
+            aux_beta=aux_for_chance,
+            num_classes=args.num_classes,
+        )
+        diff_scale = 1.0 if args.without_T else float(args.num_timesteps)
+        chance["val/chance_baseline_diff"] = float(chance["val/chance_baseline_diff"] * diff_scale)
+        aux_uniform = 0.0
+        if args.backbone == "dit" and args.aux_beta > 0.0 and args.num_classes > 1:
+            aux_uniform = float(args.aux_beta * math.log(float(args.num_classes)))
+        chance["val/chance_baseline_loss"] = float(chance["val/chance_baseline_diff"] + aux_uniform)
+        extras: list[str] = []
+        if args.backbone == "dit" and args.aux_beta > 0 and args.num_classes > 1:
+            extras.append("(val/loss baseline includes uniform aux)")
+        if test_loader is not None:
+            n_fbd0 = len(test_loader.dataset)
+            if n_fbd0 >= 2:
+                fbd_rand = compute_fbd_uniform_random_baseline(
+                    unwrap_ddp(model),
+                    test_loader,
+                    device,
+                    args,
+                    n_samples=n_fbd0,
+                    seq_len=args.max_len,
+                    fbcnn=fbcnn,
+                )
+                chance["test/fbd_random_dna_baseline"] = float(fbd_rand)
+                extras.append(f"FBD random-DNA vs test (n={n_fbd0}) ~ {fbd_rand:.4f}")
+            else:
+                extras.append("pre-train FBD skipped (test split has <2 examples)")
+        suffix = ("  " + "  ".join(extras)) if extras else ""
+        print(
+            f"Chance baseline (uniform 4-class logits, mean NLL = log 4, scale={diff_scale:g}):  "
+            f"val/diff_loss ~ {chance['val/chance_baseline_diff']:.4f}  "
+            f"val/loss ~ {chance['val/chance_baseline_loss']:.4f}{suffix}"
+        )
+        if use_wandb:
+            wandb.log(chance, step=0)
+
+    best_val_loss = float("inf")
+    best_save_path: Path | None = None
     global_step = 0
     for epoch in range(args.epochs):
         if train_sampler is not None:
@@ -356,22 +628,39 @@ def _train_loop(
         for batch_idx, batch in enumerate(loader):
             x0 = batch["x0"].to(device)
             pad = batch["mask_pad"].to(device)
-            labels = batch.get("label")
-            if labels is not None:
-                labels = labels.to(device)
+            if _use_conditional_sampling_labels(args):
+                labels = batch.get("label")
+                if labels is not None:
+                    labels = labels.to(device)
+            else:
+                labels = None
 
             B, L = x0.shape
             gen = torch.Generator(device=x0.device)
             gen.manual_seed(global_step + epoch * 10000)
             if args.log_timing:
                 t0 = tic(device)
-            views = sample_all_views(x0, alphas, generator=gen)
+            views = sample_all_views_bernoulli(
+                x0,
+                args.num_timesteps,
+                scheduler=args.bernoulli_scheduler,
+                generator=gen,
+            )
             ms_views = toc_ms(t0, device) if args.log_timing else 0.0
 
             t_start = int(torch.randint(0, args.num_timesteps, (1,), device=device).item())
+            t_cont = float(t_start + 1) / float(args.num_timesteps)
             if args.log_timing:
                 t0 = tic(device)
-            logits, pi, h_dec, loss_bal = model(views, t_start, labels=labels)
+            labels_in = labels
+            if labels is not None and args.cond_drop_prob > 0:
+                keep = torch.rand((B,), device=device) >= float(args.cond_drop_prob)
+                if args.backbone == "cnn":
+                    null_cls = int(args.num_classes)
+                    labels_in = torch.where(keep, labels, torch.full_like(labels, null_cls))
+                elif not bool(keep.all()):
+                    labels_in = None
+            logits, pi, h_dec, loss_bal, _seq_in = model(views, t_start, labels=labels_in, t_cond=t_cont)
             aux_loss_val: torch.Tensor | None = None
             if aux_head is not None and labels is not None and args.aux_beta > 0:
                 aux_logits = aux_head(h_dec)
@@ -381,11 +670,13 @@ def _train_loop(
             if args.log_timing:
                 t0 = tic(device)
             target = x0.clamp(max=3)
-            ce = F.cross_entropy(logits.transpose(1, 2), target, reduction="none")
-            ce = ce.masked_fill(pad, 0.0)
+            log_probs = F.log_softmax(logits, dim=-1)
+            nlog_p = -torch.gather(log_probs, -1, target[:, :, None]).squeeze(-1)
+            if not args.without_T:
+                nlog_p = float(args.num_timesteps) * nlog_p
+            nlog_p = nlog_p.masked_fill(pad, 0.0)
             denom = (~pad).float().sum().clamp(min=1.0)
-            w = timestep_loss_weight(alphas, t_start)
-            diff_loss = ce.float().sum() / denom * w
+            diff_loss = nlog_p.float().sum() / denom
 
             loss = diff_loss
             if args.router_lambda_bal > 0:
@@ -403,6 +694,8 @@ def _train_loop(
             if aux_head:
                 grad_norm_aux = torch.nn.utils.clip_grad_norm_(aux_head.parameters(), 1.0)
             opt.step()
+            if ema is not None:
+                ema.update()
             ms_bwd = toc_ms(t0, device) if args.log_timing else 0.0
 
             if args.log_timing:
@@ -427,7 +720,6 @@ def _train_loop(
                     "train/loss": float(loss.item()),
                     "train/diff_loss": float(diff_loss.item()),
                     "train/t_start": t_start,
-                    "train/timestep_weight": w,
                     "train/learning_rate": opt.param_groups[0]["lr"],
                     "train/grad_norm_model": _to_float(grad_norm_model),
                     "train/router_entropy": float(ent.item()),
@@ -494,43 +786,101 @@ def _train_loop(
         if use_wandb:
             wandb.log({"train/epoch_loss_avg": avg, "epoch": epoch + 1}, step=global_step)
 
-        if val_loader is not None and rank == 0:
+        if val_loader is not None:
             m = unwrap_ddp(model)
+            val_ds = val_loader.dataset
             ah = unwrap_ddp(aux_head) if aux_head is not None else None
-            vmetrics = validate_routed(
-                m,
-                val_loader,
-                alphas,
-                device,
-                ah,
-                args,
-                epoch=epoch,
-                global_step=global_step,
-            )
-            msg = f"  val_loss={vmetrics['val/loss']:.4f}"
-            if args.val_fbd_n > 0:
-                n_fbd = len(val_loader.dataset)
-                seq_len_fbd = (
-                    args.max_len
+            if ema is not None:
+                ema.store()
+                ema.copy_to()
+            do_val_loss = (epoch + 1) % args.val_epoch_freq == 0
+            do_fbd = (epoch + 1) % args.fbd_epoch_freq == 0
+
+            if do_val_loss:
+                vmetrics = validate_routed(
+                    m,
+                    val_loader,
+                    device,
+                    ah,
+                    args,
+                    epoch=epoch,
+                    global_step=global_step,
                 )
-                fbd = compute_fbd_routed(
+                if rank == 0:
+                    val_noh = vmetrics.get("val/loss_no_history")
+                    if val_noh is not None:
+                        print(
+                            f"  val_loss={vmetrics['val/loss']:.4f}  "
+                            f"val_loss_no_history={float(val_noh):.4f}"
+                        )
+                    else:
+                        print(f"  val_loss={vmetrics['val/loss']:.4f}")
+                    if use_wandb:
+                        wandb.log(vmetrics, step=global_step)
+                    # Best checkpoint tracks the with-history val/loss (training distribution).
+                    cur_val = float(vmetrics["val/loss"])
+                    if cur_val < best_val_loss:
+                        best_val_loss = cur_val
+                        save_path = Path(args.save)
+                        best_save_path = save_path.with_name(f"{save_path.stem}.best{save_path.suffix}")
+                        best_save_path.parent.mkdir(parents=True, exist_ok=True)
+                        best_payload = {
+                            "model": m.state_dict(),
+                            "args": vars(args),
+                            "alphas": alphas.cpu(),
+                            "alphas_sample": alphas_sample.cpu(),
+                            "trainer": "routed_discrete",
+                            "best_val_loss": best_val_loss,
+                            "best_val_loss_no_history": (
+                                float(val_noh) if val_noh is not None else None
+                            ),
+                            "best_epoch": epoch + 1,
+                            "best_global_step": global_step,
+                        }
+                        if ah is not None:
+                            best_payload["aux_head"] = ah.state_dict()
+                        torch.save(best_payload, best_save_path)
+                        print(f"  best checkpoint updated: {best_save_path} (val/loss={best_val_loss:.4f})")
+                        if use_wandb:
+                            wandb.summary["checkpoint_best_path"] = str(best_save_path.resolve())
+                            wandb.summary["checkpoint_best_val_loss"] = best_val_loss
+                            if val_noh is not None:
+                                wandb.summary["checkpoint_best_val_loss_no_history"] = float(val_noh)
+
+            if do_fbd:
+                n_fbd = len(val_loader.dataset)
+                if n_fbd >= 2:
+                    fbd = compute_fbd_routed(
                         m,
                         val_loader,
-                        alphas,
+                        alphas_sample,
                         device,
                         args,
                         n_samples=n_fbd,
-                        seq_len=seq_len_fbd,
+                        seq_len=args.max_len,
                         epoch=epoch,
                         fbcnn=fbcnn,
+                    )
+                    if rank == 0:
+                        tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
+                        print(f"  {tag}={fbd:.4f}")
+                        if use_wandb:
+                            wandb.log({"val/fbd": float(fbd), "epoch": epoch + 1}, step=global_step)
+                elif rank == 0:
+                    print("  fbd=skipped (<2 val examples)")
+                print_epoch_diffusion_dna_samples(
+                    m,
+                    alphas_sample,
+                    device,
+                    args,
+                    val_ds,
+                    epoch=epoch,
+                    global_step=global_step,
+                    n=4,
+                    routed=True,
                 )
-                vmetrics["val/fbd"] = fbd
-                tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
-                msg += f"  {tag}={fbd:.4f}"
-                
-            print(msg)
-            if use_wandb:
-                wandb.log(vmetrics, step=global_step)
+            if ema is not None:
+                ema.restore()
         if ddp:
             barrier()
 
@@ -541,11 +891,15 @@ def _train_loop(
             "model": unwrap_ddp(model).state_dict(),
             "args": vars(args),
             "alphas": alphas.cpu(),
+            "alphas_sample": alphas_sample.cpu(),
+            "trainer": "routed_discrete",
         }
         if aux_head is not None:
             payload["aux_head"] = unwrap_ddp(aux_head).state_dict()
         torch.save(payload, save_path)
         print(f"saved {save_path}")
+        if best_save_path is not None:
+            print(f"best val checkpoint: {best_save_path} (val/loss={best_val_loss:.4f})")
 
         if use_wandb:
             wandb.summary["checkpoint_path"] = str(save_path.resolve())

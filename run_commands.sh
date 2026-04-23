@@ -44,8 +44,24 @@ cd "$ROOT"
 #   --batch_size 8 --epochs 5 --num_classes 0 --save checkpoints/simple_dfm_fb.pt --no-wandb
 
 # -----------------------------------------------------------------------------
+# FBCNN classifier training  (run ONCE to produce a trained FBCNN.ckpt)
+# Reproduces baseline run "clsDNAclean_cnn_1stack": 1-stack CNN, 81-way fly-brain
+# classifier, 450 000 steps, lr=1e-3, batch=128 (per GPU).
+# Single GPU:
+# python -m nonmarkovian.train_fbcnn \
+#   --dfm_enhancer auto --max_len 500 \
+#   --max_steps 450000 --batch_size 128 --lr 1e-3 \
+#   --save FBCNN.ckpt --wandb_run_name clsDNAclean_cnn_1stack
+# Multi-GPU (4 GPUs, per-GPU batch=32 → global batch=128):
+# torchrun --standalone --nproc_per_node=4 -m nonmarkovian.train_fbcnn \
+#   --dfm_enhancer auto --max_len 500 \
+#   --max_steps 450000 --batch_size 32 --lr 1e-3 \
+#   --save FBCNN.ckpt --wandb_run_name clsDNAclean_cnn_1stack
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Routed model — DFM enhancer + validation + FBD (FBCNN embeddings, fly brain 81 classes)
-# --val_fbd_n is how many sequences feed FBD each epoch (not --max_len). Adjust --dfm_enhancer / --fbcnn_ckpt.
+# FBD uses the full val split count, but sequences are still cropped/padded to --max_len like train/val loaders.
 # -----------------------------------------------------------------------------
 # python -m nonmarkovian.train \
 #   --dfm_enhancer auto \
@@ -64,11 +80,10 @@ cd "$ROOT"
 #   --router_tau 1.0 \
 #   --router_lambda_bal 0.01 \
 #   --val_batch_size 8 \
-#   --val_fbd_n 500 \
 #   --val_gen_batch 8 \
 #   --fbcnn_ckpt FBCNN.ckpt \
 #   --fbcnn_num_cls 81 \
-#   --fbcnn_stacks 4 \
+#   --fbcnn_stacks 1 \
 #   --save checkpoints/routed.pt \
 #   --wandb_project nonmarkovian \
 #   --wandb_run_name routed
@@ -91,11 +106,10 @@ cd "$ROOT"
 #   --time_freq_dim 256 \
 #   --dropout 0.1 \
 #   --val_batch_size 8 \
-#   --val_fbd_n 500 \
 #   --val_gen_batch 8 \
 #   --fbcnn_ckpt FBCNN.ckpt \
 #   --fbcnn_num_cls 81 \
-#   --fbcnn_stacks 4 \
+#   --fbcnn_stacks 1 \
 #   --save checkpoints/simple_discrete.pt \
 #   --wandb_project nonmarkovian \
 #   --wandb_run_name simple_dit
@@ -115,7 +129,7 @@ cd "$ROOT"
 #   --d_model 768 --nhead 12 --dec_layers 12 --dim_ff 3072 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
 #   --router_tau 1.0 --router_lambda_bal 0.01 \
-#   --val_fbd_n 500 --fbcnn_ckpt FBCNN.ckpt \
+#   --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/routed_small.pt --wandb_run_name routed_small_110m
 
 # --- Small (~110M): simple DiT ---
@@ -124,7 +138,7 @@ cd "$ROOT"
 #   --max_len 500 --batch_size 4 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 768 --nhead 12 --dec_layers 12 --dim_ff 3072 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
-#   --val_fbd_n 500 --fbcnn_ckpt FBCNN.ckpt \
+#   --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/simple_small.pt --wandb_run_name simple_small_110m
 
 # --- Medium (~460M): routed ---
@@ -134,7 +148,7 @@ cd "$ROOT"
 #   --d_model 1024 --nhead 16 --dec_layers 24 --dim_ff 4096 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
 #   --router_tau 1.0 --router_lambda_bal 0.01 \
-#   --val_fbd_n 500 --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/routed_medium.pt --wandb_run_name routed_medium_460m
 
 # --- Medium (~460M): simple DiT ---
@@ -143,7 +157,7 @@ cd "$ROOT"
 #   --max_len 500 --batch_size 2 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 1024 --nhead 16 --dec_layers 24 --dim_ff 4096 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
-#   --val_fbd_n 500 --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_batch_size 2 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/simple_medium.pt --wandb_run_name simple_medium_460m
 
 # --- Large (~1.7B): routed ---
@@ -153,7 +167,7 @@ cd "$ROOT"
 #   --d_model 1536 --nhead 24 --dec_layers 48 --dim_ff 6144 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
 #   --router_tau 1.0 --router_lambda_bal 0.01 \
-#   --val_fbd_n 500 --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/routed_large.pt --wandb_run_name routed_large_1p7b
 
 # --- Large (~1.7B): simple DiT ---
@@ -162,7 +176,7 @@ cd "$ROOT"
 #   --max_len 500 --batch_size 1 --epochs 5 --lr 3e-4 --num_timesteps 32 \
 #   --d_model 1536 --nhead 24 --dec_layers 48 --dim_ff 6144 \
 #   --cond_dim 0 --time_freq_dim 128 --dropout 0.1 \
-#   --val_fbd_n 500 --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
+#   --val_batch_size 1 --fbcnn_ckpt FBCNN.ckpt \
 #   --save checkpoints/simple_large.pt --wandb_run_name simple_large_1p7b
 
 # -----------------------------------------------------------------------------

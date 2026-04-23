@@ -32,13 +32,13 @@ source virtualenv/Python3.11.3/bin/activate
 #   --max_len 500 --batch_size 8 --epochs 5 --num_classes 0 --save checkpoints/routed_dfm.pt
 
 # --- Routed model (DiT + Boltzmann router) + DFM + FBD (FBCNN) ---
-# python -m nonmarkovian.train --dfm_enhancer data_dfm --val_fbd_n 500 \
+# python -m nonmarkovian.train --dfm_enhancer data_dfm \
 #   --fbcnn_ckpt FBCNN.ckpt --max_len 500 --save checkpoints/routed.pt \
 #   --d_model 256 --nhead 8 --dec_layers 8 --dim_ff 1024 --cond_dim 256 \
 #   --router_tau 1.0 --router_lambda_bal 0.01
 
 # --- Simple baseline (DiT, no router) + DFM + same validation ---
-# python -m nonmarkovian.train_simple --dfm_enhancer data_dfm --val_fbd_n 500 \
+# python -m nonmarkovian.train_simple --dfm_enhancer data_dfm \
 #   --fbcnn_ckpt FBCNN.ckpt --max_len 500 --save checkpoints/simple_discrete.pt \
 #   --d_model 256 --nhead 8 --dec_layers 8 --dim_ff 1024 --cond_dim 256 \
 #   --wandb_project nonmarkovian-simple
