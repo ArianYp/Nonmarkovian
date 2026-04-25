@@ -231,9 +231,9 @@ def main() -> None:
     p.add_argument("--skip_val_loss", action="store_true")
     p.add_argument("--skip_fbd", action="store_true")
     p.add_argument(
-        "--strict_load",
+        "--no_strict_load",
         action="store_true",
-        help="Fail if checkpoint keys don't exactly match the model (default: strict=False, reports missing/unexpected keys).",
+        help="Allow partial checkpoint loads (default is strict=True).",
     )
     cli = p.parse_args()
 
@@ -276,8 +276,16 @@ def main() -> None:
     state = ckpt.get("model")
     if state is None:
         raise SystemExit("Checkpoint missing 'model' state_dict.")
-    load_info = model.load_state_dict(state, strict=cli.strict_load)
-    if not cli.strict_load:
+    state = dict(state)
+    strict_load = not bool(cli.no_strict_load)
+    if "state_embed.weight" not in state and hasattr(model, "state_embed"):
+        state_embed = getattr(model, "state_embed")
+        if hasattr(state_embed, "weight"):
+            state["state_embed.weight"] = torch.zeros_like(state_embed.weight)
+            print("[eval] info: checkpoint missing state_embed.weight; initialized it to zeros for loading.")
+
+    load_info = model.load_state_dict(state, strict=strict_load)
+    if not strict_load:
         missing = getattr(load_info, "missing_keys", []) or []
         unexpected = getattr(load_info, "unexpected_keys", []) or []
         if missing:

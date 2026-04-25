@@ -45,6 +45,23 @@ def _to_float(x: torch.Tensor | float) -> float:
     return float(x)
 
 
+def _resolve_save_path(requested: str | Path, use_wandb: bool) -> Path:
+    """Resolve a checkpoint save path.
+
+    When a W&B run is active, route checkpoints into ``wandb.run.dir``
+    (``.../wandb/run-<timestamp>-<id>/files``) so they are colocated with
+    the run's metadata, logs, and are picked up by W&B's file-sync.
+    The original basename of ``requested`` is preserved. If W&B is not
+    active (or ``wandb`` is unavailable), return the requested path as-is.
+    """
+    requested = Path(requested)
+    if use_wandb and wandb is not None and getattr(wandb, "run", None) is not None:
+        run_dir = getattr(wandb.run, "dir", None)
+        if run_dir:
+            return Path(run_dir) / requested.name
+    return requested
+
+
 class _EMA:
     """Simple parameter EMA with temporary swap for evaluation (matches train_simple._EMA)."""
 
@@ -107,7 +124,7 @@ def _parse_train_args() -> argparse.Namespace:
     p.add_argument(
         "--batch_size",
         type=int,
-        default=128,
+        default=64,
         help="Train batch size per GPU. Global batch = this × world size when using torchrun.",
     )
     p.add_argument("--epochs", type=int, default=5)
@@ -268,7 +285,7 @@ def _parse_train_args() -> argparse.Namespace:
     p.add_argument(
         "--fbd_epoch_freq",
         type=int,
-        default=5,
+        default=10,
         help="Run FBD metric + DNA preview every N epochs (default 5; set 1 for every epoch).",
     )
     p.add_argument(
@@ -821,7 +838,7 @@ def _train_loop(
                     cur_val = float(vmetrics["val/loss"])
                     if cur_val < best_val_loss:
                         best_val_loss = cur_val
-                        save_path = Path(args.save)
+                        save_path = _resolve_save_path(args.save, use_wandb)
                         best_save_path = save_path.with_name(f"{save_path.stem}.best{save_path.suffix}")
                         best_save_path.parent.mkdir(parents=True, exist_ok=True)
                         best_payload = {
@@ -885,7 +902,7 @@ def _train_loop(
             barrier()
 
     if rank == 0:
-        save_path = Path(args.save)
+        save_path = _resolve_save_path(args.save, use_wandb)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "model": unwrap_ddp(model).state_dict(),

@@ -1,0 +1,30 @@
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 393, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 373, in main
+    fbd = compute_fbd_routed(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation.py", line 564, in compute_fbd_routed
+    g = sample_sequences(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/sample.py", line 159, in sample_sequences
+    logits, _pi, _h, _lb, seq_in = model(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/model.py", line 422, in forward
+    z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/model.py", line 368, in _embed_current_and_candidates
+    rows = [self._embed(x_views[:, k_abs]) for k_abs in range(t_start + 1, T)]
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/model.py", line 368, in <listcomp>
+    rows = [self._embed(x_views[:, k_abs]) for k_abs in range(t_start + 1, T)]
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/model.py", line 341, in _embed
+    def _embed(self, x: torch.Tensor) -> torch.Tensor:
+KeyboardInterrupt

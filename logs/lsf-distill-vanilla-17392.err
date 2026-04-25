@@ -1,0 +1,13 @@
+usage: eval_checkpoint.py [-h] --checkpoint CHECKPOINT [--split {val,test}]
+                          [--trainer {,routed_discrete,simple_discrete}]
+                          [--dfm_enhancer DFM_ENHANCER] [--dfm_melanoma]
+                          [--no_dfm_melanoma] [--batch_size BATCH_SIZE]
+                          [--val_gen_batch VAL_GEN_BATCH] [--n_fbd N_FBD]
+                          [--history_mode {,trajectory,uniform,bernoulli_hat}]
+                          [--num_timesteps_sample NUM_TIMESTEPS_SAMPLE]
+                          [--fbcnn_ckpt FBCNN_CKPT]
+                          [--fbcnn_num_cls FBCNN_NUM_CLS]
+                          [--fbcnn_stacks FBCNN_STACKS] [--device DEVICE]
+                          [--seed SEED] [--skip_val_loss] [--skip_fbd]
+                          [--no_strict_load]
+eval_checkpoint.py: error: unrecognized arguments: --skip-val-loss

@@ -172,7 +172,7 @@ class DiscreteDenoiserCNN(nn.Module):
 
         cnn_num_cls = num_labels if num_labels is not None and num_labels > 0 else 1
         self.num_labels = num_labels
-        self.cnn = CNNModel(4, 81, num_cnn_stacks, classifier=False, max_len=max_len)
+        self.cnn = CNNModel(4, 81, num_cnn_stacks, classifier=False)
 
         self._encoder_proxy = _CNNEncoderProxy(self)
 

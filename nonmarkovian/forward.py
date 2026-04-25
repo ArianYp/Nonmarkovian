@@ -58,6 +58,8 @@ def corrupt_sequence_bernoulli(
     num_classes: int = 4,
     scheduler: str = "loglinear",
     generator: torch.Generator | None = None,
+    preserve_true_until: float = 0.5,
+    high_noise_error_prob: float = 0.15,
 ) -> torch.Tensor:
     """SLM-style Bernoulli corruption on simplex inputs.
 
@@ -65,6 +67,10 @@ def corrupt_sequence_bernoulli(
         x0: ``[B, L]`` token ids in ``0..num_classes-1``.
         t: ``[B, 1]`` normalized timesteps in ``(0, 1]``.
         scheduler: ``loglinear`` or ``linear`` for expected active categories.
+        preserve_true_until: for ``t >= preserve_true_until`` (near-clean region),
+            always preserve the ground-truth class in ``x_t``.
+        high_noise_error_prob: for ``t < preserve_true_until`` (noisy region), probability of
+            *not* forcing the ground-truth class to be present.
     Returns:
         ``x_t`` probabilities, shape ``[B, L, num_classes]``.
     """
@@ -75,7 +81,10 @@ def corrupt_sequence_bernoulli(
     else:
         raise ValueError(f"Unknown Bernoulli scheduler: {scheduler}")
 
-    one_hot = torch.nn.functional.one_hot(x0.long().clamp(min=0, max=num_classes - 1), num_classes=num_classes).to(
+    #one_hot = torch.nn.functional.one_hot(x0.long().clamp(min=0, max=num_classes - 1), num_classes=num_classes).to(
+    #    dtype=torch.float32
+    #)
+    one_hot = torch.nn.functional.one_hot(x0.long(), num_classes=num_classes).to(
         dtype=torch.float32
     )
     bernoulli_param = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
@@ -85,7 +94,21 @@ def corrupt_sequence_bernoulli(
     else:
         u = torch.rand(one_hot.shape, device=x0.device, dtype=torch.float32, generator=generator)
     samples = (u < bernoulli_param).to(dtype=torch.float32)
-    x_t = torch.where(one_hot > 0, one_hot, samples)
+
+    # Near-clean timesteps: always preserve true class.
+    # Noisy timesteps: allow dropping the true class with given probability.
+    high_noise = (t < float(preserve_true_until)).unsqueeze(-1)  # [B, 1, 1]
+    keep_prob_high_noise = 1.0 - float(high_noise_error_prob)
+    if generator is None:
+        keep_u = torch.rand((x0.shape[0], x0.shape[1], 1), device=x0.device, dtype=torch.float32)
+    else:
+        keep_u = torch.rand(
+            (x0.shape[0], x0.shape[1], 1), device=x0.device, dtype=torch.float32, generator=generator
+        )
+    keep_true = torch.where(high_noise, keep_u < keep_prob_high_noise, torch.ones_like(keep_u, dtype=torch.bool))
+    keep_true = keep_true.expand_as(one_hot)
+
+    x_t = torch.where((one_hot > 0) & keep_true, one_hot, samples)
     #print(x_t.shape)
     x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
     return x_t

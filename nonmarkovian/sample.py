@@ -190,11 +190,12 @@ def sample_sequences(
         # (DiT, or any model returning None).
         eps = 1e-4
         support_mask = (seq_in > eps) if seq_in is not None else (x_t > 0)
+        #print(t_start, num_steps // 2)
         if t_start > num_steps // 2:
             sample_pred = _sample_bernoulli(predicted, generator=generator) & (x_t > 0)
         else:
             sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
-        sample_pred = _sample_bernoulli(predicted, generator=generator) & (x_t > 0)
+        #sample_pred = _sample_bernoulli(predicted, generator=generator) & (x_t > 0)
         #print(support_mask.shape, support_mask.sum(),x_t, t_start)
         sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
         fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)

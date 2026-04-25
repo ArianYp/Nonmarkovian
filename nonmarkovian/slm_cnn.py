@@ -36,19 +36,9 @@ class Dense(nn.Module):
 
 
 class CNNModel(nn.Module):
-    """1D ResNet-style CNN — same structure as ``SLM/models/dna_models.py`` ``CNNModel``.
+    """1D ResNet-style CNN — same structure as ``SLM/models/dna_models.py`` ``CNNModel``."""
 
-    Optional extension: if ``max_len > 0`` is passed (and the model is a
-    denoiser, i.e. ``classifier=False``), a learnable positional embedding
-    ``pos_embed`` of shape ``[1, hidden_dim, max_len]`` is added once, right
-    after the initial input projection. This breaks the pure translation
-    equivariance of the stacked dilated convs and gives the model absolute
-    position information (useful for enhancer sequences, where motif
-    location relative to start/end matters). Defaults to ``max_len=0``
-    (disabled) to preserve exact SLM parity for existing checkpoints.
-    """
-
-    def __init__(self, alphabet_size, num_cls, num_cnn_stacks, classifier=False, *, max_len: int = 0):
+    def __init__(self, alphabet_size, num_cls, num_cnn_stacks, classifier=False):
         super().__init__()
         self.alphabet_size = alphabet_size
         self.classifier = classifier
@@ -61,7 +51,6 @@ class CNNModel(nn.Module):
         self.dropout = 0.0
         self.cls_free_guidance = True
         self.num_cnn_stacks = num_cnn_stacks
-        self.max_len = int(max_len)
 
         if self.clean_data:
             self.linear = nn.Embedding(self.alphabet_size, embedding_dim=self.hidden_dim)
@@ -77,13 +66,6 @@ class CNNModel(nn.Module):
                 GaussianFourierProjection(embed_dim=self.hidden_dim),
                 nn.Linear(self.hidden_dim, self.hidden_dim),
             )
-            if self.max_len > 0:
-                # Learnable absolute positional embedding, added to ``feat``
-                # (shape ``[B, hidden_dim, L]``) once after the input proj.
-                # Small init (std=0.02) to avoid dominating the input.
-                self.pos_embed = nn.Parameter(
-                    torch.randn(1, self.hidden_dim, self.max_len) * 0.02
-                )
 
         self.num_layers = 5 * self.num_cnn_stacks
         self.convs = [
@@ -125,8 +107,21 @@ class CNNModel(nn.Module):
                 [Dense(self.hidden_dim, self.hidden_dim) for _ in range(self.num_layers)]
             )
 
-    def _feature_map_bhl(self, seq: torch.Tensor, t: torch.Tensor, cls) -> torch.Tensor:
-        """Feature map [B, H, L] after residual stack, before ``final_conv`` (generative or classifier)."""
+    def _feature_map_bhl(
+        self,
+        seq: torch.Tensor,
+        t: torch.Tensor,
+        cls,
+        state_cond: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Feature map [B, H, L] after residual stack, before ``final_conv`` (generative or classifier).
+
+        ``state_cond`` is an optional ``[B, hidden_dim]`` additive tensor that is
+        folded into the per-layer time-conditioning pathway. Callers use this to
+        inject **diffusion-state positional** information (e.g. a π-weighted
+        sum of learnable per-state embeddings indicating *which* history
+        positions the router picked). Ignored for ``clean_data`` (classifier).
+        """
         if self.clean_data:
             feat = self.linear(seq)
             feat = feat.permute(0, 2, 1)
@@ -136,16 +131,15 @@ class CNNModel(nn.Module):
             if t.dim() > 1:
                 t = t.squeeze(-1)
             time_emb = F.relu(self.time_embedder(t))
+            if state_cond is not None:
+                if state_cond.shape[0] != time_emb.shape[0] or state_cond.shape[-1] != time_emb.shape[-1]:
+                    raise ValueError(
+                        f"state_cond shape {tuple(state_cond.shape)} incompatible with "
+                        f"time_emb {tuple(time_emb.shape)}"
+                    )
+                time_emb = time_emb + state_cond.to(dtype=time_emb.dtype)
             feat = seq.permute(0, 2, 1)
             feat = F.relu(self.linear(feat))
-            if self.max_len > 0 and hasattr(self, "pos_embed"):
-                L = feat.shape[-1]
-                if L > self.pos_embed.shape[-1]:
-                    raise ValueError(
-                        f"CNNModel: input length {L} exceeds configured max_len="
-                        f"{self.pos_embed.shape[-1]}"
-                    )
-                feat = feat + self.pos_embed[:, :, :L]
             cls_emb = None
             if self.cls_free_guidance and not self.classifier:
                 if cls is None:
@@ -166,8 +160,8 @@ class CNNModel(nn.Module):
                 feat = h
         return feat
 
-    def forward(self, seq, t, cls=None, return_embedding=False):
-        feat = self._feature_map_bhl(seq, t, cls)
+    def forward(self, seq, t, cls=None, return_embedding=False, state_cond=None):
+        feat = self._feature_map_bhl(seq, t, cls, state_cond=state_cond)
         feat = self.final_conv(feat)
         feat = feat.permute(0, 2, 1)
         if self.classifier:

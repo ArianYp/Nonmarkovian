@@ -50,6 +50,21 @@ def _to_float(x: torch.Tensor | float) -> float:
     return float(x)
 
 
+def _resolve_save_path(requested: str | Path, use_wandb: bool) -> Path:
+    """Resolve a checkpoint save path, routing into ``wandb.run.dir`` when W&B is active.
+
+    Preserves the basename of ``requested`` so the final file is
+    ``<wandb_run_dir>/files/<basename>``. Falls back to the raw path
+    when W&B is disabled or not initialized.
+    """
+    requested = Path(requested)
+    if use_wandb and wandb is not None and getattr(wandb, "run", None) is not None:
+        run_dir = getattr(wandb.run, "dir", None)
+        if run_dir:
+            return Path(run_dir) / requested.name
+    return requested
+
+
 class _EMA:
     """Simple parameter EMA with temporary swap for evaluation."""
 
@@ -672,7 +687,7 @@ def main() -> None:
                         cur_val = float(vmetrics["val/loss"])
                         if cur_val < best_val_loss:
                             best_val_loss = cur_val
-                            save_path = Path(args.save)
+                            save_path = _resolve_save_path(args.save, use_wandb)
                             best_save_path = save_path.with_name(f"{save_path.stem}.best{save_path.suffix}")
                             best_save_path.parent.mkdir(parents=True, exist_ok=True)
                             best_payload = {
@@ -731,7 +746,7 @@ def main() -> None:
                 barrier()
 
         if rank == 0:
-            save_path = Path(args.save)
+            save_path = _resolve_save_path(args.save, use_wandb)
             save_path.parent.mkdir(parents=True, exist_ok=True)
             payload = {
                 "model": unwrap_ddp(model).state_dict(),

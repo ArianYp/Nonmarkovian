@@ -112,6 +112,14 @@ class RoutedDenoiser(nn.Module):
         )
         self.output_layer = DDitFinalLayer(d_model, 4, cond_dim)
 
+        # Learnable **state-position** embedding: maps each absolute diffusion
+        # state index to a ``cond_dim`` vector that is added to the AdaLN
+        # conditioning ``c``. The router's π-weighted sum over picked history
+        # positions + the current state embedding tells the DiT *which*
+        # history positions were routed in.
+        self.state_embed = nn.Embedding(int(num_timesteps), cond_dim)
+        nn.init.normal_(self.state_embed.weight, std=0.02)
+
         self._enc_callable = _EncoderCallable(self._encode_tokens_t0)
 
     # ----- embedding (router path; no Transformer) ---------------------------
@@ -213,12 +221,17 @@ class RoutedDenoiser(nn.Module):
         if not (0 <= t_start < T):
             raise ValueError("t_start out of range")
 
-        z_t, z_cand, _ = self._embed_current_and_candidates(x_views, t_start)
+        z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
+
+        s_cur = self.state_embed(
+            torch.full((B,), int(t_start), device=device, dtype=torch.long)
+        )
 
         if z_cand is None:
             ctx = z_t
             pi = z_t.new_zeros(B, 0)
             loss_bal = z_t.new_tensor(0.0)
+            state_cond = s_cur
         else:
             e = self._compatibility_scores_full_sequence(z_t, z_cand)
             pi_hat, pi_soft, _ = self._router_forward(e)
@@ -230,6 +243,9 @@ class RoutedDenoiser(nn.Module):
             ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
             ctx = z_t + ctx_mix
             pi = pi_hat
+            # π-weighted sum of per-state embeddings -> [B, cond_dim].
+            s_cand = self.state_embed(taus_cand)            # [K, cond_dim]
+            state_cond = s_cur + pi_hat @ s_cand            # [B, cond_dim]
 
         if t_cond is None:
             t_b = torch.full((B,), int(t_start), device=device, dtype=torch.long)
@@ -237,7 +253,7 @@ class RoutedDenoiser(nn.Module):
             t_b = torch.full((B,), float(t_cond), device=device, dtype=torch.float32)
         else:
             t_b = torch.full((B,), int(t_cond), device=device, dtype=torch.long)
-        c = F.silu(self.sigma_map(t_b))
+        c = F.silu(self.sigma_map(t_b)) + state_cond
         if self.label_embed is not None and labels is not None:
             c = c + self.label_embed(labels)
 
@@ -299,7 +315,16 @@ class RoutedDenoiserCNN(nn.Module):
 
         cnn_num_cls = num_labels if num_labels is not None and num_labels > 0 else 1
         self.num_labels = num_labels
-        self.cnn = CNNModel(4, 81, num_cnn_stacks, classifier=False, max_len=max_len)
+        self.cnn = CNNModel(4, 81, num_cnn_stacks, classifier=False)
+
+        # Learnable **state-position** embedding: maps each absolute diffusion
+        # state index k ∈ [0, num_timesteps) to a vector in the CNN's time-conditioning
+        # space (hidden_dim=128). The router's π-weighted sum over picked history
+        # positions is added to the CNN's ``time_emb`` via ``state_cond``, so the
+        # denoiser knows *which* states the router selected from the history.
+        cnn_hidden = int(self.cnn.hidden_dim)
+        self.state_embed = nn.Embedding(int(num_timesteps), cnn_hidden)
+        nn.init.normal_(self.state_embed.weight, std=0.02)
 
         self._enc_callable = _EncoderCallable(self._encode_tokens_t0)
 
@@ -394,12 +419,18 @@ class RoutedDenoiserCNN(nn.Module):
         if not (0 <= t_start < T):
             raise ValueError("t_start out of range")
 
-        z_t, z_cand, _ = self._embed_current_and_candidates(x_views, t_start)
+        z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
+
+        # State-position embedding for the *current* state (always contributes).
+        s_cur = self.state_embed(
+            torch.full((B,), int(t_start), device=device, dtype=torch.long)
+        )
 
         if z_cand is None:
             ctx = z_t
             pi = z_t.new_zeros(B, 0)
             loss_bal = z_t.new_tensor(0.0)
+            state_cond = s_cur
         else:
             e = self._compatibility_scores_full_sequence(z_t, z_cand)
             pi_hat, pi_soft, _ = self._router_forward(e)
@@ -411,6 +442,12 @@ class RoutedDenoiserCNN(nn.Module):
             ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
             ctx = z_t + ctx_mix
             pi = pi_hat
+            # π-weighted sum of per-state embeddings, so the denoiser sees a
+            # smooth signal indicating *which* history positions were picked.
+            # ``taus_cand`` has shape [K] with absolute diffusion indices; the
+            # lookup yields [K, H] and we reduce to [B, H] via π_hat.
+            s_cand = self.state_embed(taus_cand)            # [K, H]
+            state_cond = s_cur + pi_hat @ s_cand            # [B, H]
         seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)
         if t_cond is None:
             t_b = torch.full((B,), int(t_start), device=device, dtype=torch.long)
@@ -426,7 +463,7 @@ class RoutedDenoiserCNN(nn.Module):
         if self.num_labels is not None and self.num_labels > 0 and labels is not None:
             cls_inp = labels
 
-        logits = self.cnn(seq_in, t_cont, cls_inp)
+        logits = self.cnn(seq_in, t_cont, cls_inp, state_cond=state_cond)
 
         # ``seq_in`` is the simplex actually fed into the CNN (current view +
         # routed history, renormalised). Return it so the sampler can use
