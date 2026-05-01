@@ -216,7 +216,7 @@ def _parse_train_args() -> argparse.Namespace:
     p.add_argument(
         "--router_lambda_bal",
         type=float,
-        default=0.1,
+        default=0.0,
         help="Weight λ for load-balancing loss (Switch-style; 0 = off)",
     )
     p.add_argument(
@@ -644,7 +644,6 @@ def _train_loop(
         sum_ms_views = sum_ms_fwd = sum_ms_loss = sum_ms_bwd = 0.0
         for batch_idx, batch in enumerate(loader):
             x0 = batch["x0"].to(device)
-            pad = batch["mask_pad"].to(device)
             if _use_conditional_sampling_labels(args):
                 labels = batch.get("label")
                 if labels is not None:
@@ -688,11 +687,12 @@ def _train_loop(
                 t0 = tic(device)
             target = x0.clamp(max=3)
             log_probs = F.log_softmax(logits, dim=-1)
+            #print(log_probs.shape, target.shape)
+            #raise ValueError("Stop here")
             nlog_p = -torch.gather(log_probs, -1, target[:, :, None]).squeeze(-1)
             if not args.without_T:
                 nlog_p = float(args.num_timesteps) * nlog_p
-            nlog_p = nlog_p.masked_fill(pad, 0.0)
-            denom = (~pad).float().sum().clamp(min=1.0)
+            denom = float(target.shape[0] * target.shape[1])
             diff_loss = nlog_p.float().sum() / denom
 
             loss = diff_loss
@@ -732,7 +732,7 @@ def _train_loop(
                         ent = -(p * p.log()).sum(dim=-1).mean()
                     else:
                         ent = torch.tensor(0.0, device=x0.device)
-                num_tokens = int((~pad).sum().item())
+                num_tokens = int(target.numel())
                 log_payload: dict = {
                     "train/loss": float(loss.item()),
                     "train/diff_loss": float(diff_loss.item()),
@@ -751,11 +751,27 @@ def _train_loop(
                 if pi.shape[-1] > 0:
                     with torch.no_grad():
                         am = pi.argmax(dim=-1)
+                        # Router candidates are indexed relative to t_start as:
+                        # candidate_idx 0 -> absolute timestep (t_start + 1), etc.
+                        chosen_t_abs = am + (t_start + 1)
+                        delta_t_start_minus_chosen = t_start - chosen_t_abs
                         log_payload["train/router_argmax_mean"] = float(am.float().mean())
                         if B > 1:
                             log_payload["train/router_argmax_std"] = float(am.float().std(unbiased=False))
                         log_payload["train/router_argmax_min"] = int(am.min().item())
                         log_payload["train/router_argmax_max"] = int(am.max().item())
+                        log_payload["train/router_argmax_abs_t_mean"] = float(chosen_t_abs.float().mean())
+                        log_payload["train/router_argmax_abs_t_min"] = int(chosen_t_abs.min().item())
+                        log_payload["train/router_argmax_abs_t_max"] = int(chosen_t_abs.max().item())
+                        log_payload["train/router_t_start_minus_argmax_t_mean"] = float(
+                            delta_t_start_minus_chosen.float().mean()
+                        )
+                        log_payload["train/router_t_start_minus_argmax_t_min"] = int(
+                            delta_t_start_minus_chosen.min().item()
+                        )
+                        log_payload["train/router_t_start_minus_argmax_t_max"] = int(
+                            delta_t_start_minus_chosen.max().item()
+                        )
                         if pi.shape[-1] > 1:
                             log_payload["train/router_weight_last_mean"] = float(pi[:, -1].mean())
                         else:

@@ -19,15 +19,21 @@ if TYPE_CHECKING:
     from nonmarkovian.fbcnn import CNNModel
 
 
-def encoder_mean_pool_embeddings(encoder: nn.Module, x: torch.Tensor, mask_pad: torch.Tensor) -> torch.Tensor:
-    """Encode tokens and mean-pool over non-pad positions. x: [B, L], mask_pad True = pad -> [B, d]."""
+def encoder_mean_pool_embeddings(
+    encoder: nn.Module,
+    x: torch.Tensor,
+    mask_pad: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Encode tokens and mean-pool over sequence length (pad positions are not masked)."""
     z = encoder(x)
-    mask = (~mask_pad).float().unsqueeze(-1)
-    denom = mask.sum(dim=1).clamp(min=1.0)
-    return (z * mask).sum(dim=1) / denom
+    return z.mean(dim=1)
 
 
-def fbcnn_embed_sequences(cnn: "CNNModel", x: torch.Tensor, mask_pad: torch.Tensor) -> torch.Tensor:
+def fbcnn_embed_sequences(
+    cnn: "CNNModel",
+    x: torch.Tensor,
+    mask_pad: torch.Tensor | None = None,
+) -> torch.Tensor:
     """FBCNN sequence embeddings (Dirichlet-FM / SLM baseline style). x: [B, L] token ids 0..3.
 
     Matches the baseline ``CNNModel(..., classifier=True)`` eval path: run the **full** padded tensor
@@ -42,7 +48,7 @@ def fbcnn_embed_sequences(cnn: "CNNModel", x: torch.Tensor, mask_pad: torch.Tens
     t = torch.zeros(B, device=device, dtype=torch.float32)
     with torch.no_grad():
         _, emb = cnn(x, t, cls=None, return_embedding=True)
-        if mask_pad.any():
+        if mask_pad is not None and mask_pad.any():
             dead = mask_pad.all(dim=1)
             if dead.any():
                 emb = emb.clone()

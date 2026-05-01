@@ -271,6 +271,7 @@ def main() -> None:
     # --- model ---
     if trainer == "routed_discrete":
         model = _build_routed_model(cfg, device)
+        model.num_timesteps = cli.num_timesteps_sample
     else:
         model = _build_simple_model(cfg, device)
     state = ckpt.get("model")

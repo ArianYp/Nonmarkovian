@@ -15,3 +15,35 @@ wandb: Syncing run simple_cnn_slm_fb
 wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
 wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/j66h0ncx
 [rank0]:[W reducer.cpp:1389] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+wandb: uploading output.log
+wandb: 
+wandb: Run history:
+wandb:                            epoch ▁▁▁▁▁▂▂▂▂▂▃▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▅▆▆▆▆▆▇▇▇████
+wandb:           model/total_parameters ▁
+wandb: model/trainable_model_parameters ▁
+wandb:       model/trainable_parameters ▁
+wandb:     test/fbd_random_dna_baseline ▁
+wandb:                  train/batch_idx ▆▃▆▃▂▃▆▄█▄▅▁▄▇▅▇▁▃▄▃▄▅▆▂▂▃▃▆▁▂▁██▆▇▁▅▄▇▆
+wandb:                 train/batch_size ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:          train/batches_per_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                  train/diff_loss █▃▃▇▃▃▃▃▃▂▄▃▂▃▂▁▃▃▇▂▆▃▃▄▂▃▄▅▂▂▇▂▂▆▄▃▅▃▇▃
+wandb:             train/epoch_loss_avg █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                              +25 ...
+wandb: 
+wandb: Run summary:
+wandb:                checkpoint_best_path /lustre/scratch126/c...
+wandb:            checkpoint_best_val_loss 0.03974
+wandb: checkpoint_best_val_loss_no_history 1.357
+wandb:                     checkpoint_path /lustre/scratch126/c...
+wandb:                    cuda_device_name NVIDIA H100 80GB HBM...
+wandb:                         cuda_usable True
+wandb:                        dataset_size 83726
+wandb:                              device cuda:0
+wandb:                         distributed True
+wandb:                               epoch 800
+wandb:                                 +39 ...
+wandb: 
+wandb: 🚀 View run simple_cnn_slm_fb at: https://wandb.ai/shariflab/nonmarkovian/runs/j66h0ncx
+wandb: ⭐️ View project at: https://wandb.ai/shariflab/nonmarkovian
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260424_164636-j66h0ncx/logs

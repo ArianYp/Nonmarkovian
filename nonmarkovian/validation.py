@@ -20,6 +20,10 @@ if TYPE_CHECKING:
     from nonmarkovian.fbcnn import CNNModel
     from nonmarkovian.model import RoutedDenoiser, RoutedDenoiserCNN
     from nonmarkovian.simple_model import DiscreteDenoiser, DiscreteDenoiserCNN
+from nonmarkovian.sample import ids_to_strings
+
+from nonmarkovian.sample import sample_sequences
+from nonmarkovian.sample_simple import sample_sequences_simple
 
 
 def train_val_split(dataset: Dataset, val_fraction: float, seed: int) -> tuple[Subset, Subset]:
@@ -166,12 +170,6 @@ def print_epoch_diffusion_dna_samples(
     ``alphas`` should be the **sampling** schedule (length ``num_timesteps_sample``); training
     timestep count comes from ``args.num_timesteps`` for denoiser conditioning.
     """
-    from nonmarkovian.sample import ids_to_strings
-
-    if routed:
-        from nonmarkovian.sample import sample_sequences
-    else:
-        from nonmarkovian.sample_simple import sample_sequences_simple
 
     def _trunc(s: str) -> str:
         if len(s) <= display_width:
@@ -305,7 +303,6 @@ def validate_routed(
 
     for batch in val_loader:
         x0 = batch["x0"].to(device)
-        pad = batch["mask_pad"].to(device)
         if _use_conditional_sampling_labels(args):
             labels = batch.get("label")
             if labels is not None:
@@ -341,18 +338,18 @@ def validate_routed(
                 labels_in = None
 
         target = x0.clamp(max=3)
-        denom = (~pad).float().sum().clamp(min=1.0)
+        denom = float(target.shape[0] * target.shape[1])
 
         logits_full, _pi, h_dec, _lb, _seq_in = model(
             views_full, t_start, labels=labels_in, t_cond=float(t_cont[0, 0].item())
         )
-        nlog_p_full = _nlog_p(logits_full, current_view, target, t_cont).masked_fill(pad, 0.0)
+        nlog_p_full = _nlog_p(logits_full, current_view, target, t_cont)
         diff_loss_full = nlog_p_full.float().sum() / denom
 
         logits_noh, _pi2, _h2, _lb2, _seq_in2 = model(
             views_noh, t_start, labels=labels_in, t_cond=float(t_cont[0, 0].item())
         )
-        nlog_p_noh = _nlog_p(logits_noh, current_view, target, t_cont).masked_fill(pad, 0.0)
+        nlog_p_noh = _nlog_p(logits_noh, current_view, target, t_cont)
         diff_loss_noh = nlog_p_noh.float().sum() / denom
 
         loss = diff_loss_full
@@ -411,7 +408,6 @@ def validate_simple(
 
     for batch in val_loader:
         x0 = batch["x0"].to(device)
-        pad = batch["mask_pad"].to(device)
         if _use_conditional_sampling_labels(args):
             labels = batch.get("label")
             if labels is not None:
@@ -467,8 +463,7 @@ def validate_simple(
             nlog_p = -torch.gather(log_probs, -1, target[:, :, None]).squeeze(-1)
             if not getattr(args, "without_T", False):
                 nlog_p = float(args.num_timesteps) * nlog_p
-        nlog_p = nlog_p.masked_fill(pad, 0.0)
-        denom = (~pad).float().sum().clamp(min=1.0)
+        denom = float(target.shape[0] * target.shape[1])
         diff_loss = nlog_p.float().sum() / denom
         loss = diff_loss
 
@@ -573,11 +568,12 @@ def compute_fbd_routed(
             generator=gen,
             history_mode=str(getattr(args, "history_mode", "trajectory")),
         )
-        pad_g = torch.zeros(g.shape[0], g.shape[1], dtype=torch.bool, device=device)
+        lines = ids_to_strings(g.cpu())
+        #print(lines)
         if fbcnn is not None:
-            gen_parts.append(fbcnn_embed_sequences(fbcnn, g, pad_g))
+            gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:
-            gen_parts.append(encoder_mean_pool_embeddings(encoder, g, pad_g))
+            gen_parts.append(encoder_mean_pool_embeddings(encoder, g))
 
     emb_dim = real_emb.shape[1] if real_emb.ndim == 2 and real_emb.numel() else 0
     gen_emb_local = (
@@ -672,11 +668,10 @@ def compute_fbd_simple(
             bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
             generator=gen,
         )
-        pad_g = torch.zeros(g.shape[0], g.shape[1], dtype=torch.bool, device=device)
         if fbcnn is not None:
-            gen_parts.append(fbcnn_embed_sequences(fbcnn, g, pad_g))
+            gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:
-            gen_parts.append(encoder_mean_pool_embeddings(encoder, g, pad_g))
+            gen_parts.append(encoder_mean_pool_embeddings(encoder, g))
 
     emb_dim = real_emb.shape[1] if real_emb.ndim == 2 and real_emb.numel() else 0
     gen_emb_local = (
@@ -739,11 +734,10 @@ def compute_fbd_uniform_random_baseline(
     for start in range(0, n_samples, args.val_gen_batch):
         bs = min(args.val_gen_batch, n_samples - start)
         g = torch.randint(0, 4, (bs, seq_len), device=device, generator=gen, dtype=torch.long)
-        pad_g = torch.zeros(bs, seq_len, dtype=torch.bool, device=device)
         if fbcnn is not None:
-            gen_parts.append(fbcnn_embed_sequences(fbcnn, g, pad_g))
+            gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:
-            gen_parts.append(encoder_mean_pool_embeddings(encoder, g, pad_g))
+            gen_parts.append(encoder_mean_pool_embeddings(encoder, g))
     gen_emb = torch.cat(gen_parts, dim=0)
 
     r = real_emb.cpu().numpy().astype(np.float64)

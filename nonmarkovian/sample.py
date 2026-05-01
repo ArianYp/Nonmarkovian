@@ -130,7 +130,8 @@ def sample_sequences(
     model.eval()
     num_steps = int(alphas_sample.shape[0])
     vocab = 4
-    T = int(num_timesteps_train) if num_timesteps_train is not None else num_steps
+    #print(num_steps)
+    T = num_steps
 
     x_t = torch.full((batch, seq_len, vocab), 1.0 / float(vocab), device=device, dtype=torch.float32)
     hat_x0_ids = torch.zeros((batch, seq_len), device=device, dtype=torch.long)
@@ -161,6 +162,8 @@ def sample_sequences(
         )
 
         support_mask = (seq_in > 0) if seq_in is not None else (x_t > 0)
+        support_mask = (seq_in >0) | (x_t > 0)
+        #support_mask = x_t > 0
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
         neg_inf = torch.finfo(logits.dtype).min
@@ -189,13 +192,13 @@ def sample_sequences(
         # back to ``x_t > 0`` when the backbone doesn't expose ``seq_in``
         # (DiT, or any model returning None).
         eps = 1e-4
-        support_mask = (seq_in > eps) if seq_in is not None else (x_t > 0)
-        #print(t_start, num_steps // 2)
-        if t_start > num_steps // 2:
-            sample_pred = _sample_bernoulli(predicted, generator=generator) & (x_t > 0)
-        else:
-            sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
-        #sample_pred = _sample_bernoulli(predicted, generator=generator) & (x_t > 0)
+        one_hot = F.one_hot(hat_x0_ids, num_classes=vocab).to(dtype=torch.bool)
+        support_mask = (x_t > 0) | one_hot
+        #print((x_t > 0).sum(), one_hot.sum())
+        #print(support_mask.shape, support_mask.sum(),x_t.sum(), one_hot.sum())
+        #if (x_t > 0).sum() != support_mask.sum():
+        #    print((x_t > 0).sum(), support_mask.sum())
+        sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
         #print(support_mask.shape, support_mask.sum(),x_t, t_start)
         sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
         fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
@@ -301,7 +304,7 @@ def main() -> None:
         model = RoutedDenoiserCNN(
             d_model=int(cfg.get("d_model", 256)),
             max_len=max_len,
-            num_timesteps=num_timesteps_train,
+            num_timesteps=num_timesteps_sample,
             num_labels=num_classes if num_classes > 0 else None,
             router_tau=router_tau,
             router_k=router_k,
@@ -330,7 +333,8 @@ def main() -> None:
             time_freq_dim=time_freq_dim,
         ).to(device)
     model.load_state_dict(ckpt["model"])
-
+    model.num_timesteps = num_timesteps_sample
+    #print(model.num_timesteps,"model.num_timesteps")
     labels = None
     if num_classes > 0 and args.label >= 0:
         labels = torch.full((args.batch,), args.label, device=device, dtype=torch.long)

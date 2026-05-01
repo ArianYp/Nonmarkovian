@@ -1,0 +1,278 @@
+W0430 02:12:17.303000 22650033284224 torch/distributed/run.py:757] 
+W0430 02:12:17.303000 22650033284224 torch/distributed/run.py:757] *****************************************
+W0430 02:12:17.303000 22650033284224 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0430 02:12:17.303000 22650033284224 torch/distributed/run.py:757] *****************************************
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.26.0
+wandb: Run data is saved locally in /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260430_021240-ssj4m956
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run simple_cnn_slm_fb
+wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
+wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/ssj4m956
+W0430 16:25:25.600000 22650033284224 torch/distributed/elastic/agent/server/api.py:741] Received Signals.SIGINT death signal, shutting down workers
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank3]:     return _run_code(code, main_globals, None,
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank3]:     exec(code, run_globals)
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank3]:     main()
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank3]:     _train_loop(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank3]:     views = sample_all_views_bernoulli(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank3]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 78, in corrupt_sequence_bernoulli
+[rank3]:     expect_nums = torch.clamp(torch.exp(torch.log(torch.tensor(float(num_classes), device=x0.device)) * t), min=1.0)
+[rank3]: KeyboardInterrupt
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank1]:     return _run_code(code, main_globals, None,
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank1]:     exec(code, run_globals)
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank1]:     main()
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank1]:     _train_loop(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank1]:     views = sample_all_views_bernoulli(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank1]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 78, in corrupt_sequence_bernoulli
+[rank1]:     expect_nums = torch.clamp(torch.exp(torch.log(torch.tensor(float(num_classes), device=x0.device)) * t), min=1.0)
+[rank1]: KeyboardInterrupt
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank2]:     return _run_code(code, main_globals, None,
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank2]:     exec(code, run_globals)
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank2]:     main()
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank2]:     _train_loop(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank2]:     views = sample_all_views_bernoulli(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank2]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 78, in corrupt_sequence_bernoulli
+[rank2]:     expect_nums = torch.clamp(torch.exp(torch.log(torch.tensor(float(num_classes), device=x0.device)) * t), min=1.0)
+[rank2]: KeyboardInterrupt
+W0430 16:25:25.618000 22650033284224 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2747968 closing signal SIGINT
+W0430 16:25:25.619000 22650033284224 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2747969 closing signal SIGINT
+Exception ignored in atexit callbackW0430 16:25:25.619000 22650033284224 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2747970 closing signal SIGINT
+: <function dump_compile_times at 0x14c5e0a352d0>
+Exception ignored in atexit callbackTraceback (most recent call last):
+W0430 16:25:25.619000 22650033284224 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2747971 closing signal SIGINT
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 320, in dump_compile_times
+: <function dump_compile_times at 0x14f03c2d5120>
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 320, in dump_compile_times
+Exception ignored in atexit callback: <function dump_compile_times at 0x14d8a6d692d0>
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 320, in dump_compile_times
+        log.info(compile_times(repr="str", aggregate=True))log.info(compile_times(repr="str", aggregate=True))
+
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 307, in compile_times
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 307, in compile_times
+    log.info(compile_times(repr="str", aggregate=True))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 307, in compile_times
+    out += tabulate(rows, headers=("Function", "Runtimes (s)"))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 121, in tabulate
+    out += tabulate(rows, headers=("Function", "Runtimes (s)"))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 121, in tabulate
+    import tabulate
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+    out += tabulate(rows, headers=("Function", "Runtimes (s)"))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 121, in tabulate
+  File "<frozen importlib._bootstrap>", line 1002, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 945, in _find_spec
+  File "<frozen importlib._bootstrap_external>", line 1439, in find_spec
+    import tabulate  File "<frozen importlib._bootstrap_external>", line 1411, in _get_spec
+
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap_external>", line 1563, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 161, in _path_isfile
+  File "<frozen importlib._bootstrap>", line 1002, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 153, in _path_is_mode_type
+  File "<frozen importlib._bootstrap>", line 945, in _find_spec
+KeyboardInterrupt:   File "<frozen importlib._bootstrap_external>", line 1439, in find_spec
+
+  File "<frozen importlib._bootstrap_external>", line 1408, in _get_spec
+KeyboardInterrupt: 
+    import tabulate
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1002, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 945, in _find_spec
+  File "<frozen importlib._bootstrap_external>", line 1439, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 1411, in _get_spec
+  File "<frozen importlib._bootstrap_external>", line 1544, in find_spec
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap_external>", line 147, in _path_stat
+KeyboardInterrupt: 
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+    _train_loop(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+    views = sample_all_views_bernoulli(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+    views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 111, in corrupt_sequence_bernoulli
+    x_t = torch.where(one_hot > 0, one_hot, samples)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 545, in main
+    wandb.finish()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 4120, in finish
+    wandb.run.finish(exit_code=exit_code, quiet=quiet)
+socket.send() raised exception.
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 399, in wrapper
+    return func(self, *args, **kwargs)
+socket.send() raised exception.
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 444, in wrapper
+    return func(self, *args, **kwargs)
+socket.send() raised exception.
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 2297, in finish
+    return self._finish(exit_code)
+socket.send() raised exception.
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 399, in wrapper
+    return func(self, *args, **kwargs)
+socket.send() raised exception.
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 2309, in _finish
+    logger.info(f"finishing run {self._get_path()}")
+  File "/usr/lib/python3.10/logging/__init__.py", line 1477, in info
+    self._log(INFO, msg, args, **kwargs)
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 1624, in _log
+    self.handle(record)
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 1634, in handle
+    self.callHandlers(record)
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+    hdlr.handle(record)
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 968, in handle
+    self.emit(record)
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 1218, in emit
+    StreamHandler.emit(self, record)
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 1104, in emit
+    self.flush()
+socket.send() raised exception.
+  File "/usr/lib/python3.10/logging/__init__.py", line 1084, in flush
+    self.stream.flush()
+socket.send() raised exception.
+KeyboardInterrupt
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank0]:     _train_loop(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank0]:     views = sample_all_views_bernoulli(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank0]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 111, in corrupt_sequence_bernoulli
+[rank0]:     x_t = torch.where(one_hot > 0, one_hot, samples)
+[rank0]: KeyboardInterrupt
+
+[rank0]: During handling of the above exception, another exception occurred:
+
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank0]:     return _run_code(code, main_globals, None,
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank0]:     exec(code, run_globals)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank0]:     main()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 545, in main
+[rank0]:     wandb.finish()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 4120, in finish
+[rank0]:     wandb.run.finish(exit_code=exit_code, quiet=quiet)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 399, in wrapper
+[rank0]:     return func(self, *args, **kwargs)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 444, in wrapper
+[rank0]:     return func(self, *args, **kwargs)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 2297, in finish
+[rank0]:     return self._finish(exit_code)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 399, in wrapper
+[rank0]:     return func(self, *args, **kwargs)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_run.py", line 2309, in _finish
+[rank0]:     logger.info(f"finishing run {self._get_path()}")
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1477, in info
+[rank0]:     self._log(INFO, msg, args, **kwargs)
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1624, in _log
+[rank0]:     self.handle(record)
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1634, in handle
+[rank0]:     self.callHandlers(record)
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+[rank0]:     hdlr.handle(record)
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 968, in handle
+[rank0]:     self.emit(record)
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1218, in emit
+[rank0]:     StreamHandler.emit(self, record)
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1104, in emit
+[rank0]:     self.flush()
+[rank0]:   File "/usr/lib/python3.10/logging/__init__.py", line 1084, in flush
+[rank0]:     self.stream.flush()
+[rank0]: KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x14b4281817e0>
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_connection.py", line 73, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_connection.py", line 353, in teardown
+    self._asyncer.run(publish_teardown_and_close)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 137, in run
+    return future.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 458, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/asyncio_manager.py", line 223, in _wrap
+    return await fn()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_connection.py", line 344, in publish_teardown_and_close
+    await self._client.publish(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 45, in publish
+    await self._send_server_request(request)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 78, in _send_server_request
+    raise self._broken_exc.with_traceback(self._broken_tb)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 87, in _send_server_request
+    await self._drain_writer()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/service/service_client.py", line 96, in _drain_writer
+    await self._writer.drain()
+  File "/usr/lib/python3.10/asyncio/streams.py", line 371, in drain
+    await self._protocol._drain_helper()
+  File "/usr/lib/python3.10/asyncio/streams.py", line 167, in _drain_helper
+    raise ConnectionResetError('Connection lost')
+ConnectionResetError: Connection lost
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 254, in launch_agent
+    result = agent.run()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/metrics/api.py", line 123, in wrapper
+    result = f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 733, in run
+    result = self._invoke_run(role)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 876, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 76, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 2747802 got signal: 2

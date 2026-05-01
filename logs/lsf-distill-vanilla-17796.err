@@ -1,0 +1,172 @@
+W0427 09:46:05.099000 22447666394240 torch/distributed/run.py:757] 
+W0427 09:46:05.099000 22447666394240 torch/distributed/run.py:757] *****************************************
+W0427 09:46:05.099000 22447666394240 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0427 09:46:05.099000 22447666394240 torch/distributed/run.py:757] *****************************************
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+  File "/usr/lib/python3.10/inspect.py", line 1624, in getframeinfo
+    return _run_code(code, main_globals, None,    
+    return _run_code(code, main_globals, None,  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+return _run_code(code, main_globals, None,W0427 09:46:06.943000 22447666394240 torch/distributed/elastic/agent/server/api.py:741] Received Signals.SIGINT death signal, shutting down workers
+
+
+      File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 10, in <module>
+        exec(code, run_globals)exec(code, run_globals)
+
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 10, in <module>
+      File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 10, in <module>
+W0427 09:46:06.943000 22447666394240 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3959384 closing signal SIGINT
+lines, lnum = findsource(frame)
+  File "/usr/lib/python3.10/inspect.py", line 952, in findsource
+W0427 09:46:06.943000 22447666394240 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3959385 closing signal SIGINT
+W0427 09:46:06.943000 22447666394240 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3959386 closing signal SIGINT
+    module = getmodule(object, file)
+  File "/usr/lib/python3.10/inspect.py", line 878, in getmodule
+W0427 09:46:06.943000 22447666394240 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3959387 closing signal SIGINT
+  File "/usr/lib/python3.10/posixpath.py", line 394, in realpath
+    return abspath(path)
+  File "/usr/lib/python3.10/posixpath.py", line 377, in abspath
+    if not isabs(path):
+  File "/usr/lib/python3.10/posixpath.py", line 64, in isabs
+    return s.startswith(sep)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 10, in <module>
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/__init__.py", line 1921, in <module>
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/__init__.py", line 1921, in <module>
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/__init__.py", line 1921, in <module>
+    import torch
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/__init__.py", line 1921, in <module>
+    from . import _meta_registrations
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_meta_registrations.py", line 9, in <module>
+    from . import _meta_registrations
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_meta_registrations.py", line 9, in <module>
+    from . import _meta_registrations
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_meta_registrations.py", line 9, in <module>
+    from . import _meta_registrations
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_meta_registrations.py", line 9, in <module>
+    from torch._decomp import (
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/__init__.py", line 244, in <module>
+        from torch._decomp import (from torch._decomp import (
+
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/__init__.py", line 244, in <module>
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/__init__.py", line 244, in <module>
+    from torch._decomp import (
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/__init__.py", line 244, in <module>
+    import torch._decomp.decompositions
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/decompositions.py", line 11, in <module>
+    import torch._decomp.decompositions
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/decompositions.py", line 11, in <module>
+    import torch._decomp.decompositions
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/decompositions.py", line 11, in <module>
+    import torch._decomp.decompositions
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_decomp/decompositions.py", line 11, in <module>
+    import torch._prims as prims
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/__init__.py", line 3031, in <module>
+    import torch._prims as prims
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/__init__.py", line 3031, in <module>
+    import torch._prims as prims
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/__init__.py", line 3031, in <module>
+    import torch._prims as prims
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/__init__.py", line 3031, in <module>
+    register_debug_prims()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/debug_prims.py", line 41, in register_debug_prims
+    register_debug_prims()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/debug_prims.py", line 41, in register_debug_prims
+    register_debug_prims()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/debug_prims.py", line 41, in register_debug_prims
+    register_debug_prims()
+      File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_prims/debug_prims.py", line 41, in register_debug_prims
+def load_tensor_factory(name, size, stride, dtype, device):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 333, in inner
+    def load_tensor_factory(name, size, stride, dtype, device):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 333, in inner
+    def load_tensor_factory(name, size, stride, dtype, device):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 333, in inner
+    def load_tensor_factory(name, size, stride, dtype, device):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 333, in inner
+    self._register_impl("factory", f)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 223, in _register_impl
+    frame = inspect.getframeinfo(sys._getframe(stacklevel))
+  File "/usr/lib/python3.10/inspect.py", line 1624, in getframeinfo
+    self._register_impl("factory", f)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 223, in _register_impl
+    self._register_impl("factory", f)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 223, in _register_impl
+    frame = inspect.getframeinfo(sys._getframe(stacklevel))
+          File "/usr/lib/python3.10/inspect.py", line 1624, in getframeinfo
+lines, lnum = findsource(frame)self._register_impl("factory", f)
+
+  File "/usr/lib/python3.10/inspect.py", line 952, in findsource
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_custom_op/impl.py", line 223, in _register_impl
+    module = getmodule(object, file)
+  File "/usr/lib/python3.10/inspect.py", line 878, in getmodule
+    frame = inspect.getframeinfo(sys._getframe(stacklevel))    
+lines, lnum = findsource(frame)  File "/usr/lib/python3.10/inspect.py", line 1624, in getframeinfo
+
+  File "/usr/lib/python3.10/inspect.py", line 952, in findsource
+    os.path.realpath(f)] = module.__name__
+  File "/usr/lib/python3.10/posixpath.py", line 393, in realpath
+    module = getmodule(object, file)
+  File "/usr/lib/python3.10/inspect.py", line 875, in getmodule
+    path, ok = _joinrealpath(filename[:0], filename, strict, {})
+  File "/usr/lib/python3.10/posixpath.py", line 428, in _joinrealpath
+    lines, lnum = findsource(frame)
+  File "/usr/lib/python3.10/inspect.py", line 952, in findsource
+    st = os.lstat(newpath)    
+f = getabsfile(module)KeyboardInterrupt
+
+  File "/usr/lib/python3.10/inspect.py", line 844, in getabsfile
+    module = getmodule(object, file)
+  File "/usr/lib/python3.10/inspect.py", line 878, in getmodule
+    _filename = getsourcefile(object) or getfile(object)
+  File "/usr/lib/python3.10/inspect.py", line 820, in getsourcefile
+    os.path.realpath(f)] = module.__name__
+  File "/usr/lib/python3.10/posixpath.py", line 393, in realpath
+    if any(filename.endswith(s) for s in all_bytecode_suffixes):
+KeyboardInterrupt    path, ok = _joinrealpath(filename[:0], filename, strict, {})
+
+  File "/usr/lib/python3.10/posixpath.py", line 428, in _joinrealpath
+    frame = inspect.getframeinfo(sys._getframe(stacklevel))
+  File "/usr/lib/python3.10/inspect.py", line 1624, in getframeinfo
+    st = os.lstat(newpath)
+KeyboardInterrupt
+    lines, lnum = findsource(frame)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 254, in launch_agent
+    result = agent.run()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/metrics/api.py", line 123, in wrapper
+    result = f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 733, in run
+    result = self._invoke_run(role)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 876, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 76, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 3959296 got signal: 2

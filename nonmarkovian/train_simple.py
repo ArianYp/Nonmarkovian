@@ -524,7 +524,6 @@ def main() -> None:
             sum_ms_corrupt = sum_ms_fwd = sum_ms_loss = sum_ms_bwd = 0.0
             for batch_idx, batch in enumerate(loader):
                 x0 = batch["x0"].to(device)
-                pad = batch["mask_pad"].to(device)
                 if _use_conditional_sampling_labels(args):
                     labels = batch.get("label")
                     if labels is not None:
@@ -578,8 +577,7 @@ def main() -> None:
                 nlog_p = -torch.gather(log_probs, -1, target[:, :, None]).squeeze(-1)
                 if not args.without_T:
                     nlog_p = float(args.num_timesteps) * nlog_p
-                nlog_p = nlog_p.masked_fill(pad, 0.0)
-                denom = (~pad).float().sum().clamp(min=1.0)
+                denom = float(target.shape[0] * target.shape[1])
                 diff_loss = nlog_p.float().sum() / denom
 
                 loss = diff_loss
@@ -611,7 +609,7 @@ def main() -> None:
                 global_step += 1
 
                 if use_wandb:
-                    num_tokens = int((~pad).sum().item())
+                    num_tokens = int(target.numel())
                     log_payload: dict = {
                         "train/loss": float(loss.item()),
                         "train/diff_loss": float(diff_loss.item()),

@@ -1,0 +1,190 @@
+W0430 02:14:05.837000 23308663751808 torch/distributed/run.py:757] 
+W0430 02:14:05.837000 23308663751808 torch/distributed/run.py:757] *****************************************
+W0430 02:14:05.837000 23308663751808 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0430 02:14:05.837000 23308663751808 torch/distributed/run.py:757] *****************************************
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run ftu7187c
+wandb: Tracking run with wandb version 0.26.0
+wandb: Run data is saved locally in /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260430_021423-ftu7187c
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run simple_cnn_slm_fb
+wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
+wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/ftu7187c
+W0430 16:25:10.004000 23308663751808 torch/distributed/elastic/agent/server/api.py:741] Received Signals.SIGINT death signal, shutting down workers
+Traceback (most recent call last):
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank1]:     return _run_code(code, main_globals, None,
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank1]:     exec(code, run_globals)
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank1]:     main()
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank1]:     _train_loop(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank1]:     views = sample_all_views_bernoulli(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank1]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank1]: KeyboardInterrupt
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank3]:     return _run_code(code, main_globals, None,
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank3]:     exec(code, run_globals)
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank3]:     main()
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank3]:     _train_loop(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank3]:     views = sample_all_views_bernoulli(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank3]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 78, in corrupt_sequence_bernoulli
+[rank3]:     expect_nums = torch.clamp(torch.exp(torch.log(torch.tensor(float(num_classes), device=x0.device)) * t), min=1.0)
+[rank3]: KeyboardInterrupt
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank2]:     return _run_code(code, main_globals, None,
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank2]:     exec(code, run_globals)
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+[rank2]:     main()
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank2]:     _train_loop(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+[rank2]:     views = sample_all_views_bernoulli(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+[rank2]:     views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 111, in corrupt_sequence_bernoulli
+[rank2]:     x_t = torch.where(one_hot > 0, one_hot, samples)
+[rank2]: KeyboardInterrupt
+W0430 16:25:10.024000 23308663751808 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 906751 closing signal SIGINT
+Error in sys.excepthook:
+W0430 16:25:10.024000 23308663751808 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 906752 closing signal SIGINT
+Exception ignored in atexit callbackTraceback (most recent call last):
+W0430 16:25:10.025000 23308663751808 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 906753 closing signal SIGINT
+: <function dump_compile_times at 0x150ffbed12d0>Exception ignored in: 
+W0430 16:25:10.025000 23308663751808 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 906754 closing signal SIGINT
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 320, in dump_compile_times
+<module 'threading' from '/usr/lib/python3.10/threading.py'>  File "/usr/lib/python3.10/contextlib.py", line 576, in __exit__
+Exception ignored in atexit callback
+Traceback (most recent call last):
+:   File "/usr/lib/python3.10/threading.py", line 1547, in _shutdown
+<function dump_compile_times at 0x14536a3d92d0>
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 320, in dump_compile_times
+    raise exc_details[1]
+  File "/usr/lib/python3.10/contextlib.py", line 153, in __exit__
+    self.gen.throw(typ, value, traceback)    
+_main_thread._stop()  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/console_capture.py", line 288, in _reset_on_exception
+
+  File "/usr/lib/python3.10/threading.py", line 1053, in _stop
+    _maintain_shutdown_locks()
+  File "/usr/lib/python3.10/threading.py", line 800, in _maintain_shutdown_locks
+    def _maintain_shutdown_locks():
+KeyboardInterrupt: 
+    log.info(compile_times(repr="str", aggregate=True))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 307, in compile_times
+    log.info(compile_times(repr="str", aggregate=True))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 307, in compile_times
+    yield
+  File "/usr/lib/python3.10/contextlib.py", line 561, in __exit__
+    if cb(*exc_details):
+  File "/usr/lib/python3.10/contextlib.py", line 142, in __exit__
+    next(self.gen)
+      File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/wb_logging.py", line 108, in log_to_all_runs
+out += tabulate(rows, headers=("Function", "Runtimes (s)"))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 121, in tabulate
+    out += tabulate(rows, headers=("Function", "Runtimes (s)"))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 121, in tabulate
+    import tabulate
+  File "<frozen importlib._bootstrap>", line 1024, in _find_and_load
+        _run_id.reset(token)import tabulate
+
+KeyboardInterrupt  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+
+
+Original exception was:
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+  File "<frozen importlib._bootstrap>", line 170, in __enter__
+  File "<frozen importlib._bootstrap>", line 1002, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 196, in _get_module_lock
+  File "<frozen importlib._bootstrap>", line 945, in _find_spec
+  File "<frozen importlib._bootstrap>", line 71, in __init__
+  File "<frozen importlib._bootstrap>", line 746, in find_spec
+KeyboardInterruptKeyboardInterrupt: : 
+
+    _train_loop(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 659, in _train_loop
+    views = sample_all_views_bernoulli(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 172, in sample_all_views_bernoulli
+    views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/forward.py", line 87, in corrupt_sequence_bernoulli
+    one_hot = torch.nn.functional.one_hot(x0.long(), num_classes=num_classes).to(
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 928, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+    _train_loop(
+KeyboardInterrupt
+W0430 16:25:19.014000 23308663751808 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 906751 closing signal SIGTERM
+W0430 16:25:19.014000 23308663751808 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 906753 closing signal SIGTERM
+Terminated
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 733, in run
+    result = self._invoke_run(role)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 876, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 76, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 906645 got signal: 2
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 254, in launch_agent
+    result = agent.run()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/metrics/api.py", line 123, in wrapper
+    result = f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/api.py", line 742, in run
+    self._shutdown(e.sigval)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 296, in _shutdown
+    self._pcontext.close(death_sig)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 541, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 861, in _close
+    handler.proc.wait(time_to_wait)
+  File "/usr/lib/python3.10/subprocess.py", line 1209, in wait
+    return self._wait(timeout=timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 1953, in _wait
+    time.sleep(delay)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 75, in _terminate_process_handler
+    sigval = signal.Signals(signum)
+  File "/usr/lib/python3.10/enum.py", line 385, in __call__
+    return cls.__new__(cls, value)
+  File "/usr/lib/python3.10/enum.py", line 678, in __new__
+    def __new__(cls, value):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 76, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 906645 got signal: 15

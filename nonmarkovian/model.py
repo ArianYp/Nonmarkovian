@@ -39,6 +39,21 @@ def _ste_hard_threshold(x: torch.Tensor, eps: float) -> torch.Tensor:
     return x - (x * (1.0 - mask)).detach()
 
 
+def _mask_to_topk_logits(e: torch.Tensor, k: int) -> torch.Tensor:
+    """Keep per-row top-k logits and set others to -inf."""
+    if e.ndim != 2:
+        return e
+    num_cands = int(e.shape[-1])
+    kk = int(k)
+    if num_cands <= 0 or kk <= 0 or kk >= num_cands:
+        return e
+    top_idx = torch.topk(e, k=kk, dim=-1).indices
+    keep = torch.zeros_like(e, dtype=torch.bool)
+    keep.scatter_(1, top_idx, True)
+    neg_inf = torch.finfo(e.dtype).min
+    return e.masked_fill(~keep, neg_inf)
+
+
 class _EncoderCallable:
     """Thin wrapper so ``model.encoder(x)`` works for FBD without nn.Module registration."""
 
@@ -83,6 +98,7 @@ class RoutedDenoiser(nn.Module):
         self.num_timesteps = num_timesteps
         self.max_len = max_len
         self.router_tau = float(router_tau)
+        self.router_k = int(router_k)
         self._inv_sqrt_d = 1.0 / math.sqrt(float(d_model))
         self.ctx_mix_eps: float = 1e-4
 
@@ -119,6 +135,9 @@ class RoutedDenoiser(nn.Module):
         # history positions were routed in.
         self.state_embed = nn.Embedding(int(num_timesteps), cond_dim)
         nn.init.normal_(self.state_embed.weight, std=0.02)
+        # Project the same state embedding into the router feature space so
+        # state identity affects the compatibility scores *before* routing.
+        self.state_router_proj = nn.Linear(cond_dim, d_model, bias=False)
 
         self._enc_callable = _EncoderCallable(self._encode_tokens_t0)
 
@@ -182,17 +201,26 @@ class RoutedDenoiser(nn.Module):
         return z_t, z_cand, taus_cand
 
     def _compatibility_scores_full_sequence(
-        self, z_t: torch.Tensor, z_cand: torch.Tensor
+        self,
+        z_t: torch.Tensor,
+        z_cand: torch.Tensor,
+        state_t: torch.Tensor | None = None,
+        state_cand: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Per-position bilinear scores, mean over length. z_t: [B, L, d], z_cand: [B, K, L, d] -> [B, K]."""
+        if state_t is not None:
+            z_t = z_t + state_t.unsqueeze(1)
+        if state_cand is not None:
+            z_cand = z_cand + state_cand.unsqueeze(0).unsqueeze(2)
         h_w = self.W_phi(z_t)
         return (h_w.unsqueeze(1) * z_cand).sum(dim=-1).mean(dim=-1) * self._inv_sqrt_d
 
     def _router_forward(self, e: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         tau = max(self.router_tau, 1e-6)
-        pi_soft = torch.softmax(e / tau, dim=-1)
+        e_masked = _mask_to_topk_logits(e, self.router_k)
+        pi_soft = torch.softmax(e_masked / tau, dim=-1)
         if self.training:
-            pi = F.gumbel_softmax(e, tau=tau, dim=-1, hard=False)
+            pi = F.gumbel_softmax(e_masked, tau=tau, dim=-1, hard=False)
         else:
             pi = pi_soft
         return pi, pi_soft, pi
@@ -203,6 +231,7 @@ class RoutedDenoiser(nn.Module):
             return e.new_tensor(0.0)
         k_hard = e.argmax(dim=-1)
         f = F.one_hot(k_hard, num_classes=K).to(dtype=e.dtype).mean(dim=0)
+        pi_soft = F.softmax(e, dim=-1)
         bar_pi = pi_soft.mean(dim=0)
         return (float(K) * (f * bar_pi).sum()).to(e.dtype)
 
@@ -226,6 +255,8 @@ class RoutedDenoiser(nn.Module):
         s_cur = self.state_embed(
             torch.full((B,), int(t_start), device=device, dtype=torch.long)
         )
+        #s_cur_router = self.state_router_proj(s_cur)
+        s_cur_router = None
 
         if z_cand is None:
             ctx = z_t
@@ -233,7 +264,15 @@ class RoutedDenoiser(nn.Module):
             loss_bal = z_t.new_tensor(0.0)
             state_cond = s_cur
         else:
-            e = self._compatibility_scores_full_sequence(z_t, z_cand)
+            s_cand = self.state_embed(taus_cand)            # [K, cond_dim]
+            #s_cand_router = self.state_router_proj(s_cand)  # [K, d_model]
+            s_cand_router = None
+            e = self._compatibility_scores_full_sequence(
+                z_t,
+                z_cand,
+                state_t=s_cur_router,
+                state_cand=s_cand_router,
+            )
             pi_hat, pi_soft, _ = self._router_forward(e)
             loss_bal = self._load_balance_loss(e, pi_soft) if self.training else e.new_tensor(0.0)
             pi_w = pi_hat.view(B, -1, 1, 1)
@@ -244,7 +283,6 @@ class RoutedDenoiser(nn.Module):
             ctx = z_t + ctx_mix
             pi = pi_hat
             # π-weighted sum of per-state embeddings -> [B, cond_dim].
-            s_cand = self.state_embed(taus_cand)            # [K, cond_dim]
             state_cond = s_cur + pi_hat @ s_cand            # [B, cond_dim]
 
         if t_cond is None:
@@ -274,9 +312,9 @@ class RoutedDenoiser(nn.Module):
 class RoutedDenoiserCNN(nn.Module):
     """Boltzmann router + SLM ``CNNModel`` denoiser.
 
-    Routing uses **4-channel** per-base simplex inputs. ``W_phi`` is **Conv1d(4, C_out, K)** shared
-    for current and future views. Compatibility is dot similarity in conv feature space:
-    ``e_k = ⟨ conv(z_t), conv(z_{cand,k}) ⟩ / √(C_out·L)`` (both maps ``[B,C_out,L]``). Length ``L`` follows
+    Routing uses **4-channel** per-base simplex inputs. ``W_cur`` projects the current view and
+    ``W_phi`` projects candidate views. Compatibility is dot similarity in conv feature space:
+    ``e_k = ⟨ W_cur(z_t), W_phi(z_{cand,k}) ⟩ / √(C_out·L)`` (both maps ``[B,C_out,L]``). Length ``L`` follows
     the batch (no pad-to-``max_len`` here; that was only needed for the old flattened MLP router).
     Mixed ``ctx`` is renormalized to a simplex per position, then passed to ``CNNModel``.
     """
@@ -298,12 +336,18 @@ class RoutedDenoiserCNN(nn.Module):
         self.d_model = d_model
         self.num_timesteps = num_timesteps
         self.max_len = max_len
-        self.router_tau = 0.05
+        self.router_tau = router_tau
+        self.router_k = int(router_k)
         self.ctx_mix_eps: float = 1e-4
-        print("router_tau \n\n\n\n", router_tau)
+        # Debug logging cadence for router sharpness during training.
+        # Set to 0 or negative to disable.
+        self.router_log_every: int = 100
+        self._router_log_step: int = 0
+        print("router_tau \n\n\n\n", router_tau, router_k)
         
-        self.router_out_channels = 128
+        self.router_out_channels = 64
         rk = 1
+        print("rk", rk)
         if rk < 1 or rk % 2 == 0:
             raise ValueError("router_conv_kernel must be a positive odd int (e.g. 9)")
         self.router_conv_kernel = rk
@@ -312,19 +356,21 @@ class RoutedDenoiserCNN(nn.Module):
         self.W_phi = nn.Conv1d(
             4, self.router_out_channels, kernel_size=rk, padding=pad, bias=False
         )
+        self.W_cur = nn.Conv1d(
+            4, self.router_out_channels, kernel_size=rk, padding=pad, bias=False
+        )
 
         cnn_num_cls = num_labels if num_labels is not None and num_labels > 0 else 1
         self.num_labels = num_labels
         self.cnn = CNNModel(4, 81, num_cnn_stacks, classifier=False)
 
-        # Learnable **state-position** embedding: maps each absolute diffusion
-        # state index k ∈ [0, num_timesteps) to a vector in the CNN's time-conditioning
-        # space (hidden_dim=128). The router's π-weighted sum over picked history
-        # positions is added to the CNN's ``time_emb`` via ``state_cond``, so the
-        # denoiser knows *which* states the router selected from the history.
         cnn_hidden = int(self.cnn.hidden_dim)
-        self.state_embed = nn.Embedding(int(num_timesteps), cnn_hidden)
-        nn.init.normal_(self.state_embed.weight, std=0.02)
+        # Reuse the CNN's own ``time_embedder`` for absolute history-state
+        # indices as well; this keeps current-time and selected-state features
+        # in the same representation space.
+        # Project the resulting state-time features into the router *input* space so
+        # state identity affects the selection scores before ``W_phi``.
+        self.state_router_proj = nn.Linear(cnn_hidden, 4, bias=False)
 
         self._enc_callable = _EncoderCallable(self._encode_tokens_t0)
 
@@ -342,6 +388,10 @@ class RoutedDenoiserCNN(nn.Module):
         if x.ndim == 3:
             return x.to(dtype=torch.float32)
         return tokens_to_four_channel_simplex(x)
+
+    def _embed_state_times(self, t_idx: torch.Tensor) -> torch.Tensor:
+        t_cont = timestep_index_to_float(t_idx, self.num_timesteps)
+        return self.cnn.time_embedder(t_cont)
 
     def encode_all_views(self, x_views: torch.Tensor) -> torch.Tensor:
         if x_views.ndim == 4:
@@ -371,28 +421,58 @@ class RoutedDenoiserCNN(nn.Module):
         return z_t, z_cand, taus_cand
 
     def _compatibility_scores_full_sequence(
-        self, z_t: torch.Tensor, z_cand: torch.Tensor
+        self,
+        z_t: torch.Tensor,
+        z_cand: torch.Tensor,
+        state_t: torch.Tensor | None = None,
+        state_cand: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """``z_t``: [B, L, 4], ``z_cand``: [B, K, L, 4] → [B, K]. Same conv on both; dot similarity."""
+        """``z_t``: [B, L, 4], ``z_cand``: [B, K, L, 4] → [B, K] via ``W_cur``/``W_phi`` dot similarity."""
         B, Kc, L, four = z_cand.shape
         if four != 4:
             raise ValueError(f"expected last dim 4, got {four}")
         if z_t.shape[1] != L:
             raise ValueError(f"z_t length {z_t.shape[1]} != candidate length {L}")
+        if state_t is not None:
+            z_t = z_t + state_t.unsqueeze(1)
+        if state_cand is not None:
+            z_cand = z_cand + state_cand.unsqueeze(0).unsqueeze(2)
         c_out = self.router_out_channels
         inv_sqrt = 1.0 / math.sqrt(float(L * c_out))
-        h_cur = self.W_phi(z_t.transpose(1, 2).contiguous())
+        h_cur = self.W_cur(z_t.transpose(1, 2).contiguous())
         z_ck = z_cand.reshape(B * Kc, L, 4).transpose(1, 2).contiguous()
         h_cand = self.W_phi(z_ck).view(B, Kc, c_out, L)
         return (h_cur[:, None, :, :] * h_cand).sum(dim=(2, 3)) * inv_sqrt
 
     def _router_forward(self, e: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         tau = max(self.router_tau, 1e-6)
+        #print(tau)
+        #print(self.router_tau)
+        
+        #print("e", e)
+        #e_masked = _mask_to_topk_logits(e, self.router_k)
+        #print(e_masked)
         pi_soft = torch.softmax(e / tau, dim=-1)
         if self.training:
             pi = F.gumbel_softmax(e, tau=tau, dim=-1, hard=False)
         else:
             pi = pi_soft
+        if self.training:
+            self._router_log_step += 1
+            if self.router_log_every > 0 and (self._router_log_step % self.router_log_every == 0):
+                with torch.no_grad():
+                    peak_soft = pi_soft.max(dim=-1).values.mean().item()
+                    peak_sample = pi.max(dim=-1).values.mean().item()
+                    entropy_soft = (-(pi_soft * (pi_soft.clamp(min=1e-8).log())).sum(dim=-1)).mean().item()
+                    print(
+                        "[router]",
+                        f"step={self._router_log_step}",
+                        f"tau={tau:.6f}",
+                        f"peak_soft={peak_soft:.4f}",
+                        f"peak_sample={peak_sample:.4f}",
+                        f"entropy_soft={entropy_soft:.4f}",
+                    )
+        #print(pi, pi_soft)
         return pi, pi_soft, pi
 
     def _load_balance_loss(self, e: torch.Tensor, pi_soft: torch.Tensor) -> torch.Tensor:
@@ -421,10 +501,13 @@ class RoutedDenoiserCNN(nn.Module):
 
         z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
 
-        # State-position embedding for the *current* state (always contributes).
-        s_cur = self.state_embed(
+        # Absolute history-state features from the same ``cnn.time_embedder`` used
+        # for the current diffusion time conditioning.
+        s_cur = self._embed_state_times(
             torch.full((B,), int(t_start), device=device, dtype=torch.long)
         )
+        #s_cur_router = self.state_router_proj(s_cur)    # [B, 4]
+        s_cur_router = None
 
         if z_cand is None:
             ctx = z_t
@@ -432,7 +515,15 @@ class RoutedDenoiserCNN(nn.Module):
             loss_bal = z_t.new_tensor(0.0)
             state_cond = s_cur
         else:
-            e = self._compatibility_scores_full_sequence(z_t, z_cand)
+            s_cand = self._embed_state_times(taus_cand)     # [K, H]
+            #s_cand_router = self.state_router_proj(s_cand)  # [K, 4]
+            s_cand_router = None
+            e = self._compatibility_scores_full_sequence(
+                z_t,
+                z_cand,
+                state_t=s_cur_router,
+                state_cand=s_cand_router,
+            )
             pi_hat, pi_soft, _ = self._router_forward(e)
             loss_bal = self._load_balance_loss(e, pi_soft) if self.training else e.new_tensor(0.0)
             pi_w = pi_hat.view(B, -1, 1, 1)
@@ -442,12 +533,16 @@ class RoutedDenoiserCNN(nn.Module):
             ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
             ctx = z_t + ctx_mix
             pi = pi_hat
+            #print(self.router_tau, self.router_k)
+            #print(t_start,taus_cand, pi_hat.argmax(dim=-1)[0], pi_hat[pi_hat.argmax(dim=-1)])
             # π-weighted sum of per-state embeddings, so the denoiser sees a
             # smooth signal indicating *which* history positions were picked.
             # ``taus_cand`` has shape [K] with absolute diffusion indices; the
             # lookup yields [K, H] and we reduce to [B, H] via π_hat.
-            s_cand = self.state_embed(taus_cand)            # [K, H]
-            state_cond = s_cur + pi_hat @ s_cand            # [B, H]
+            #print(pi_hat)
+            #print(pi_hat.shape,s_cand.shape,s_cand[pi_hat.argmax(dim=-1)], pi_hat.to(dtype=torch.float32) @ s_cand , pi_hat.argmax(dim=-1),print(pi_hat))
+            #state_cond = s_cur + pi_hat.to(dtype=torch.float32) @ s_cand            # [B, H]
+            state_cond = None
         seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)
         if t_cond is None:
             t_b = torch.full((B,), int(t_start), device=device, dtype=torch.long)

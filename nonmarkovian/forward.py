@@ -97,6 +97,7 @@ def corrupt_sequence_bernoulli(
 
     # Near-clean timesteps: always preserve true class.
     # Noisy timesteps: allow dropping the true class with given probability.
+    '''
     high_noise = (t < float(preserve_true_until)).unsqueeze(-1)  # [B, 1, 1]
     keep_prob_high_noise = 1.0 - float(high_noise_error_prob)
     if generator is None:
@@ -106,9 +107,9 @@ def corrupt_sequence_bernoulli(
             (x0.shape[0], x0.shape[1], 1), device=x0.device, dtype=torch.float32, generator=generator
         )
     keep_true = torch.where(high_noise, keep_u < keep_prob_high_noise, torch.ones_like(keep_u, dtype=torch.bool))
-    keep_true = keep_true.expand_as(one_hot)
-
-    x_t = torch.where((one_hot > 0) & keep_true, one_hot, samples)
+    keep_true = keep_true.expand_as(one_hot)'''
+    x_t = torch.where(one_hot > 0, one_hot, samples)
+    #x_t = torch.where((one_hot > 0) & keep_true, one_hot, samples)
     #print(x_t.shape)
     x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
     return x_t
