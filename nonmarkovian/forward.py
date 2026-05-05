@@ -155,16 +155,24 @@ def sample_all_views_bernoulli(
     scheduler: str = "loglinear",
     generator: torch.Generator | None = None,
     num_classes: int = 4,
+    corruption_mode: str = "independent",
 ) -> torch.Tensor:
-    """Sample Bernoulli simplex views x_1..x_T independently from x_0.
+    """Sample Bernoulli simplex views x_1..x_T from x_0.
 
     Returns shape ``[B, T, L, 4]`` where each view ``tau`` uses ``t=(tau+1)/T``.
     If ``t_start`` is provided, returns only needed views ``tau in [t_start, T-1]``,
     with shape ``[B, T - t_start, L, 4]``.
 
-    Vectorized across timesteps -- a single random tensor and a single
-    ``torch.where`` replace the previous per-step Python loop / per-step
-    kernel launches.
+    ``corruption_mode`` controls how off-diagonal noise entries are sampled:
+
+    - ``"independent"`` *(default)*: each timestep draws a fresh random tensor,
+      so noise at different times is i.i.d. given x_0.
+
+    - ``"trajectory"``: a single random tensor ``u ~ U[0,1]`` is shared across
+      all timesteps. An off-diagonal entry activates (becomes 1) at the first tau
+      where ``u < p_tau``, and stays 1 for all later times. This enforces the
+      **monotone trajectory constraint**: if a position is zero at time t-1 it
+      must also be zero at time t, i.e. the support of noise never shrinks.
     """
     T = int(num_timesteps)
     if T < 1:
@@ -172,6 +180,8 @@ def sample_all_views_bernoulli(
     tau_begin = 0 if t_start is None else int(t_start)
     if not (0 <= tau_begin < T):
         raise ValueError(f"t_start must be in [0, {T - 1}]")
+    if corruption_mode not in ("independent", "trajectory"):
+        raise ValueError(f"corruption_mode must be 'independent' or 'trajectory', got {corruption_mode!r}")
 
     B, L = x0.shape
     K = T - tau_begin
@@ -191,21 +201,34 @@ def sample_all_views_bernoulli(
         raise ValueError(f"Unknown Bernoulli scheduler: {scheduler}")
 
     bernoulli_param = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
-    bernoulli_param = torch.clamp(bernoulli_param, min=0.0, max=1.0).view(1, K, 1, 1)
+    bernoulli_param = torch.clamp(bernoulli_param, min=0.0, max=1.0).view(1, K, 1, 1)  # [1, K, 1, 1]
 
     one_hot = torch.nn.functional.one_hot(x0.long(), num_classes=num_classes).to(
         dtype=torch.float32
     )  # [B, L, C]
-    one_hot = one_hot.unsqueeze(1).expand(B, K, L, num_classes)
+    one_hot_k = one_hot.unsqueeze(1).expand(B, K, L, num_classes)
 
-    shape = (B, K, L, num_classes)
-    if generator is None:
-        u = torch.rand(shape, device=device, dtype=torch.float32)
+    if corruption_mode == "independent":
+        # Fresh u per (B, tau, L, C) — noise at each timestep is i.i.d. given x_0.
+        shape = (B, K, L, num_classes)
+        if generator is None:
+            u = torch.rand(shape, device=device, dtype=torch.float32)
+        else:
+            u = torch.rand(shape, device=device, dtype=torch.float32, generator=generator)
     else:
-        u = torch.rand(shape, device=device, dtype=torch.float32, generator=generator)
-    samples = (u < bernoulli_param).to(dtype=torch.float32)
+        # "trajectory": one u per (B, L, C) shared across all timesteps.
+        # Because p_tau is monotonically increasing, u < p_{tau-1} => u < p_tau,
+        # so once a position activates it stays active — the monotone constraint holds.
+        shape = (B, 1, L, num_classes)
+        if generator is None:
+            u = torch.rand(shape, device=device, dtype=torch.float32)
+        else:
+            u = torch.rand(shape, device=device, dtype=torch.float32, generator=generator)
+        # u broadcasts over K dimension against bernoulli_param [1, K, 1, 1]
 
-    x_t = torch.where(one_hot > 0, one_hot, samples)
+    samples = (u < bernoulli_param).to(dtype=torch.float32)  # [B, K, L, C]
+
+    x_t = torch.where(one_hot_k > 0, one_hot_k, samples)
     x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
     return x_t
 

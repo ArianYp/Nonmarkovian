@@ -144,6 +144,18 @@ def _parse_train_args() -> argparse.Namespace:
         help="SLM-style Bernoulli corruption scheduler for routed history views.",
     )
     p.add_argument(
+        "--corruption_mode",
+        type=str,
+        default="independent",
+        choices=("independent", "trajectory"),
+        help=(
+            "Corruption strategy for multi-view sampling. "
+            "'independent': each timestep draws fresh noise (i.i.d. given x_0). "
+            "'trajectory': a single noise draw is shared across timesteps so that "
+            "once a position is corrupted it stays corrupted (monotone constraint)."
+        ),
+    )
+    p.add_argument(
         "--without_T",
         action="store_true",
         help="Do not scale new_diff loss by T (matches SLM `training.without_T`).",
@@ -672,6 +684,7 @@ def _train_loop(
                 t_start=t_start,
                 scheduler=args.bernoulli_scheduler,
                 generator=gen,
+                corruption_mode=args.corruption_mode,
             )
             ms_views = toc_ms(t0, device) if args.log_timing else 0.0
 

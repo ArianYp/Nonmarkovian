@@ -322,6 +322,7 @@ def validate_routed(
             num_timesteps,
             scheduler=scheduler_name,
             generator=gen,
+            corruption_mode=str(getattr(args, "corruption_mode", "independent")),
         )
         B, Tv, L, C = views_full.shape
         current_view = views_full[:, t_start].clone()
