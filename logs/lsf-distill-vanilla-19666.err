@@ -1,0 +1,77 @@
+W0504 16:40:51.038000 22607220958336 torch/distributed/run.py:757] 
+W0504 16:40:51.038000 22607220958336 torch/distributed/run.py:757] *****************************************
+W0504 16:40:51.038000 22607220958336 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0504 16:40:51.038000 22607220958336 torch/distributed/run.py:757] *****************************************
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run pi4c5i7u
+wandb: ERROR Run initialization has timed out after 90.0 sec. Please try increasing the timeout with the `init_timeout` setting: `wandb.init(settings=wandb.Settings(init_timeout=120))`.
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 984, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 504, in main
+    wandb.init(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1611, in init
+    get_sentry().reraise(e)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/analytics/sentry.py", line 190, in reraise
+    raise exc.with_traceback(tb)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1594, in init
+    run = wi.init(run_settings, run_config, run_printer)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1038, in init
+    raise CommError(
+wandb.errors.errors.CommError: Run initialization has timed out after 90.0 sec. Please try increasing the timeout with the `init_timeout` setting: `wandb.init(settings=wandb.Settings(init_timeout=120))`.
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank0]:     return _run_code(code, main_globals, None,
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank0]:     exec(code, run_globals)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 984, in <module>
+[rank0]:     main()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 504, in main
+[rank0]:     wandb.init(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1611, in init
+[rank0]:     get_sentry().reraise(e)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/analytics/sentry.py", line 190, in reraise
+[rank0]:     raise exc.with_traceback(tb)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1594, in init
+[rank0]:     run = wi.init(run_settings, run_config, run_printer)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1038, in init
+[rank0]:     raise CommError(
+[rank0]: wandb.errors.errors.CommError: Run initialization has timed out after 90.0 sec. Please try increasing the timeout with the `init_timeout` setting: `wandb.init(settings=wandb.Settings(init_timeout=120))`.
+W0504 16:46:22.719000 22607220958336 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2202882 closing signal SIGTERM
+W0504 16:46:22.720000 22607220958336 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2202883 closing signal SIGTERM
+W0504 16:46:22.721000 22607220958336 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2202884 closing signal SIGTERM
+E0504 16:46:23.840000 22607220958336 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 1) local_rank: 0 (pid: 2202881) of binary: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/python
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+nonmarkovian.train FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-05-04_16:46:22
+  host      : farm-gpu0508.internal.sanger.ac.uk
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 2202881)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

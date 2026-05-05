@@ -1,0 +1,6 @@
+/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py:342: UserWarning: FBCNN checkpoint has 20 conv layers but CNNModel(num_cnn_stacks=1) has 5. Uninitialized layers make FBD meaningless (often ~0 for random vs real). Use --fbcnn_stacks 4 if the checkpoint uses stacks of 5 convs each.
+  fbcnn = load_fbcnn_classifier(
+/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/fbcnn.py:222: UserWarning: FBCNN load_state_dict incomplete: missing=0 unexpected=90 (first missing: [], first unexpected: ['convs.5.weight', 'convs.5.bias', 'convs.6.weight', 'convs.6.bias', 'convs.7.weight'])
+  warnings.warn(
+/bin/bash: line 10: --fbcnn_ckpt: command not found
+/bin/bash: line 11: --num_timesteps_sample: command not found

@@ -1,0 +1,51 @@
+W0504 05:55:05.741000 23089407833216 torch/distributed/run.py:757] 
+W0504 05:55:05.741000 23089407833216 torch/distributed/run.py:757] *****************************************
+W0504 05:55:05.741000 23089407833216 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0504 05:55:05.741000 23089407833216 torch/distributed/run.py:757] *****************************************
+/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py:496: UserWarning: FBCNN checkpoint has 20 conv layers but CNNModel(num_cnn_stacks=1) has 5. Uninitialized layers make FBD meaningless (often ~0 for random vs real). Use --fbcnn_stacks 4 if the checkpoint uses stacks of 5 convs each.
+  fbcnn = load_fbcnn_classifier(
+/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/fbcnn.py:222: UserWarning: FBCNN load_state_dict incomplete: missing=0 unexpected=90 (first missing: [], first unexpected: ['convs.5.weight', 'convs.5.bias', 'convs.6.weight', 'convs.6.bias', 'convs.7.weight'])
+  warnings.warn(
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run bwvtxa2b
+wandb: Tracking run with wandb version 0.26.0
+wandb: Run data is saved locally in /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260504_055521-bwvtxa2b
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run simple_cnn_slm_fb
+wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
+wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/bwvtxa2b
+wandb: updating run metadata
+wandb: uploading output.log
+wandb: uploading history steps 221600-221600, summary, console lines 4500-4512
+wandb: 
+wandb: Run history:
+wandb:                            epoch ▁▁▁▁▁▁▂▂▂▂▂▂▂▂▂▂▂▃▃▃▄▄▄▄▄▄▅▅▅▅▅▅▆▆▆▇▇▇▇█
+wandb:           model/total_parameters ▁
+wandb: model/trainable_model_parameters ▁
+wandb:       model/trainable_parameters ▁
+wandb:     test/fbd_random_dna_baseline ▁
+wandb:                  train/batch_idx ▂▃█▂▄▁▃▇▂▆▂▂▃▆▃▅▆▃▆▁▁█▃▆▂▅█▄▆▄▂▇▄▃▆▆▅▁█▆
+wandb:                 train/batch_size ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:          train/batches_per_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                  train/diff_loss ▆▇█▇▁▂▁▂▂▄█▅▃▄▂▁▁▇▃▁██▁▇▁▃▃▄▇▄▆▅▃▁▅▂▂▅▃▁
+wandb:             train/epoch_loss_avg █▇▅▅▆▆▅▆▃▄▅▄▄▁▇▄▅▂▂▁▃▃▂▁▃▆▃▅▄▃▁▃▂▃▄▄▄▃▂▅
+wandb:                              +39 ...
+wandb: 
+wandb: Run summary:
+wandb:                 checkpoint_best_fbd 32.4283
+wandb:            checkpoint_best_fbd_path /lustre/scratch126/c...
+wandb:                checkpoint_best_path /lustre/scratch126/c...
+wandb:            checkpoint_best_val_loss 0.39319
+wandb: checkpoint_best_val_loss_no_history 0.79433
+wandb:                     checkpoint_path /lustre/scratch126/c...
+wandb:                    cuda_device_name NVIDIA H200
+wandb:                         cuda_usable True
+wandb:                        dataset_size 70892
+wandb:                              device cuda:0
+wandb:                                 +55 ...
+wandb: 
+wandb: 🚀 View run simple_cnn_slm_fb at: https://wandb.ai/shariflab/nonmarkovian/runs/bwvtxa2b
+wandb: ⭐️ View project at: https://wandb.ai/shariflab/nonmarkovian
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260504_055521-bwvtxa2b/logs

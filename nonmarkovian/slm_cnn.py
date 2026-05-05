@@ -137,7 +137,7 @@ class CNNModel(nn.Module):
                         f"state_cond shape {tuple(state_cond.shape)} incompatible with "
                         f"time_emb {tuple(time_emb.shape)}"
                     )
-                time_emb = time_emb + state_cond.to(dtype=time_emb.dtype)
+                
             feat = seq.permute(0, 2, 1)
             feat = F.relu(self.linear(feat))
             cls_emb = None

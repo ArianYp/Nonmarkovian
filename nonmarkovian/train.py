@@ -21,7 +21,7 @@ from nonmarkovian.distributed_utils import (
     unwrap_ddp,
 )
 from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views_bernoulli
-from nonmarkovian.model import ActivityAuxHead, RoutedDenoiser, RoutedDenoiserCNN
+from nonmarkovian.model import ActivityAuxHead, RoutedDenoiserCNN
 from nonmarkovian.train_timing import tic, toc_ms
 from nonmarkovian.validation import (
     _use_conditional_sampling_labels,
@@ -285,8 +285,14 @@ def _parse_train_args() -> argparse.Namespace:
     p.add_argument(
         "--fbd_epoch_freq",
         type=int,
-        default=10,
+        default=100,
         help="Run FBD metric + DNA preview every N epochs (default 5; set 1 for every epoch).",
+    )
+    p.add_argument(
+        "--best_fbd_epochs",
+        type=int,
+        default=200,
+        help="In the last N epochs run FBD every epoch and save a best-FBD checkpoint.",
     )
     p.add_argument(
         "--fbcnn_ckpt",
@@ -294,11 +300,11 @@ def _parse_train_args() -> argparse.Namespace:
         default="",
         help="Path to fly-brain CNN checkpoint (FBCNN.ckpt) for FBD embeddings; empty = use denoiser encoder",
     )
-    p.add_argument("--fbcnn_num_cls", type=int, default=81, help="Classifier num classes (fly brain: 81)")
+    p.add_argument("--fbcnn_num_cls", type=int, default=0, help="Classifier num classes (0 = auto-detect from checkpoint)")
     p.add_argument(
         "--fbcnn_stacks",
         type=int,
-        default=1,
+        default=0,
         help="CNNModel stacks (5 conv layers per stack). Fly-brain FBCNN.ckpt has 1 stack; "
         "using 4 with that ckpt leaves most weights random and FBD near0.",
     )
@@ -631,6 +637,8 @@ def _train_loop(
 
     best_val_loss = float("inf")
     best_save_path: Path | None = None
+    best_fbd = float("inf")
+    best_fbd_save_path: Path | None = None
     global_step = 0
     for epoch in range(args.epochs):
         if train_sampler is not None:
@@ -654,18 +662,19 @@ def _train_loop(
             B, L = x0.shape
             gen = torch.Generator(device=x0.device)
             gen.manual_seed(global_step + epoch * 10000)
+            t_start = int(torch.randint(0, args.num_timesteps, (1,), device=device).item())
+            t_cont = float(t_start + 1) / float(args.num_timesteps)
             if args.log_timing:
                 t0 = tic(device)
             views = sample_all_views_bernoulli(
                 x0,
                 args.num_timesteps,
+                t_start=t_start,
                 scheduler=args.bernoulli_scheduler,
                 generator=gen,
             )
             ms_views = toc_ms(t0, device) if args.log_timing else 0.0
 
-            t_start = int(torch.randint(0, args.num_timesteps, (1,), device=device).item())
-            t_cont = float(t_start + 1) / float(args.num_timesteps)
             if args.log_timing:
                 t0 = tic(device)
             labels_in = labels
@@ -676,7 +685,13 @@ def _train_loop(
                     labels_in = torch.where(keep, labels, torch.full_like(labels, null_cls))
                 elif not bool(keep.all()):
                     labels_in = None
-            logits, pi, h_dec, loss_bal, _seq_in = model(views, t_start, labels=labels_in, t_cond=t_cont)
+            logits, pi, h_dec, loss_bal, _seq_in = model(
+                views,
+                0,
+                labels=labels_in,
+                t_cond=t_cont,
+                t_start_abs=t_start,
+            )
             aux_loss_val: torch.Tensor | None = None
             if aux_head is not None and labels is not None and args.aux_beta > 0:
                 aux_logits = aux_head(h_dec)
@@ -827,7 +842,8 @@ def _train_loop(
                 ema.store()
                 ema.copy_to()
             do_val_loss = (epoch + 1) % args.val_epoch_freq == 0
-            do_fbd = (epoch + 1) % args.fbd_epoch_freq == 0
+            in_fbd_window = (args.epochs - epoch) <= args.best_fbd_epochs
+            do_fbd = in_fbd_window or ((epoch + 1) % args.fbd_epoch_freq == 0)
 
             if do_val_loss:
                 vmetrics = validate_routed(
@@ -899,6 +915,28 @@ def _train_loop(
                         print(f"  {tag}={fbd:.4f}")
                         if use_wandb:
                             wandb.log({"val/fbd": float(fbd), "epoch": epoch + 1}, step=global_step)
+                        if in_fbd_window and float(fbd) < best_fbd:
+                            best_fbd = float(fbd)
+                            save_path = _resolve_save_path(args.save, use_wandb)
+                            best_fbd_save_path = save_path.with_name(f"{save_path.stem}.best_fbd{save_path.suffix}")
+                            best_fbd_save_path.parent.mkdir(parents=True, exist_ok=True)
+                            fbd_payload = {
+                                "model": m.state_dict(),
+                                "args": vars(args),
+                                "alphas": alphas.cpu(),
+                                "alphas_sample": alphas_sample.cpu(),
+                                "trainer": "routed_discrete",
+                                "best_fbd": best_fbd,
+                                "best_fbd_epoch": epoch + 1,
+                                "best_fbd_global_step": global_step,
+                            }
+                            if ah is not None:
+                                fbd_payload["aux_head"] = ah.state_dict()
+                            torch.save(fbd_payload, best_fbd_save_path)
+                            print(f"  best-fbd checkpoint updated: {best_fbd_save_path} ({tag}={best_fbd:.4f})")
+                            if use_wandb:
+                                wandb.summary["checkpoint_best_fbd_path"] = str(best_fbd_save_path.resolve())
+                                wandb.summary["checkpoint_best_fbd"] = best_fbd
                 elif rank == 0:
                     print("  fbd=skipped (<2 val examples)")
                 print_epoch_diffusion_dna_samples(
@@ -933,6 +971,8 @@ def _train_loop(
         print(f"saved {save_path}")
         if best_save_path is not None:
             print(f"best val checkpoint: {best_save_path} (val/loss={best_val_loss:.4f})")
+        if best_fbd_save_path is not None:
+            print(f"best fbd checkpoint: {best_fbd_save_path} (fbd={best_fbd:.4f})")
 
         if use_wandb:
             wandb.summary["checkpoint_path"] = str(save_path.resolve())

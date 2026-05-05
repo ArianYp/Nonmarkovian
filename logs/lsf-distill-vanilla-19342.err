@@ -1,0 +1,181 @@
+W0502 15:56:10.735000 23155581961344 torch/distributed/run.py:757] 
+W0502 15:56:10.735000 23155581961344 torch/distributed/run.py:757] *****************************************
+W0502 15:56:10.735000 23155581961344 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0502 15:56:10.735000 23155581961344 torch/distributed/run.py:757] *****************************************
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run tmeen8ov
+wandb: Tracking run with wandb version 0.26.0
+wandb: Run data is saved locally in /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260502_155625-tmeen8ov
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run simple_cnn_slm_fb
+wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
+wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/tmeen8ov
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank2]:     return _run_code(code, main_globals, None,
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank2]:     exec(code, run_globals)
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 944, in <module>
+[rank2]:     main()
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank2]:     _train_loop(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 708, in _train_loop
+[rank2]:     loss.backward()
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_tensor.py", line 525, in backward
+[rank2]:     torch.autograd.backward(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/__init__.py", line 267, in backward
+[rank2]:     _engine_run_backward(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/graph.py", line 744, in _engine_run_backward
+[rank2]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank2]: torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.44 GiB. GPU  has a total capacity of 79.10 GiB of which 7.53 GiB is free. Including non-PyTorch memory, this process has 71.55 GiB memory in use. Of the allocated memory 55.96 GiB is allocated by PyTorch, and 13.53 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank1]:     return _run_code(code, main_globals, None,
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank1]:     exec(code, run_globals)
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 944, in <module>
+[rank1]:     main()
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank1]:     _train_loop(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 708, in _train_loop
+[rank1]:     loss.backward()
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_tensor.py", line 525, in backward
+[rank1]:     torch.autograd.backward(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/__init__.py", line 267, in backward
+[rank1]:     _engine_run_backward(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/graph.py", line 744, in _engine_run_backward
+[rank1]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank1]: torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.44 GiB. GPU  has a total capacity of 79.10 GiB of which 7.77 GiB is free. Including non-PyTorch memory, this process has 71.32 GiB memory in use. Of the allocated memory 55.96 GiB is allocated by PyTorch, and 13.53 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank3]:     return _run_code(code, main_globals, None,
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank3]:     exec(code, run_globals)
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 944, in <module>
+[rank3]:     main()
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank3]:     _train_loop(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 708, in _train_loop
+[rank3]:     loss.backward()
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_tensor.py", line 525, in backward
+[rank3]:     torch.autograd.backward(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/__init__.py", line 267, in backward
+[rank3]:     _engine_run_backward(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/graph.py", line 744, in _engine_run_backward
+[rank3]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank3]: torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.44 GiB. GPU  has a total capacity of 79.10 GiB of which 7.53 GiB is free. Including non-PyTorch memory, this process has 71.55 GiB memory in use. Of the allocated memory 55.96 GiB is allocated by PyTorch, and 13.53 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-4, summary, console lines 0-18
+wandb: 
+wandb: Run history:
+wandb:                            epoch ▁▁▁▁
+wandb:           model/total_parameters ▁
+wandb: model/trainable_model_parameters ▁
+wandb:       model/trainable_parameters ▁
+wandb:     test/fbd_random_dna_baseline ▁
+wandb:                  train/batch_idx ▁▃▆█
+wandb:                 train/batch_size ▁▁▁▁
+wandb:          train/batches_per_epoch ▁▁▁▁
+wandb:                  train/diff_loss ▁▂▃█
+wandb:            train/grad_norm_model ▅▃▁█
+wandb:                              +25 ...
+wandb: 
+wandb: Run summary:
+wandb:                 cuda_device_name NVIDIA H100 80GB HBM...
+wandb:                      cuda_usable True
+wandb:                     dataset_size 83726
+wandb:                           device cuda:0
+wandb:                      distributed True
+wandb:                            epoch 1
+wandb:                       fbcnn_ckpt /lustre/scratch126/c...
+wandb:                    fbd_embedding fbcnn
+wandb:           model/total_parameters 3668676.0
+wandb: model/trainable_model_parameters 3668612.0
+wandb:                              +35 ...
+wandb: 
+wandb: 🚀 View run simple_cnn_slm_fb at: https://wandb.ai/shariflab/nonmarkovian/runs/tmeen8ov
+wandb: ⭐️ View project at: https://wandb.ai/shariflab/nonmarkovian
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260502_155625-tmeen8ov/logs
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 944, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+    _train_loop(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 708, in _train_loop
+    loss.backward()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_tensor.py", line 525, in backward
+    torch.autograd.backward(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/__init__.py", line 267, in backward
+    _engine_run_backward(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/graph.py", line 744, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.44 GiB. GPU 
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank0]:     return _run_code(code, main_globals, None,
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank0]:     exec(code, run_globals)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 944, in <module>
+[rank0]:     main()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 528, in main
+[rank0]:     _train_loop(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train.py", line 708, in _train_loop
+[rank0]:     loss.backward()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/_tensor.py", line 525, in backward
+[rank0]:     torch.autograd.backward(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/__init__.py", line 267, in backward
+[rank0]:     _engine_run_backward(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/autograd/graph.py", line 744, in _engine_run_backward
+[rank0]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank0]: torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.44 GiB. GPU 
+W0502 15:56:41.148000 23155581961344 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2413006 closing signal SIGTERM
+E0502 15:56:41.262000 23155581961344 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 1) local_rank: 1 (pid: 2413007) of binary: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/python
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+nonmarkovian.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-05-02_15:56:41
+  host      : farm-gpu0303.internal.sanger.ac.uk
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 2413008)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-05-02_15:56:41
+  host      : farm-gpu0303.internal.sanger.ac.uk
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 2413009)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-05-02_15:56:41
+  host      : farm-gpu0303.internal.sanger.ac.uk
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 2413007)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

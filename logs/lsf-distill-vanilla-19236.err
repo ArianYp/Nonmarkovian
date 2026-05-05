@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 413, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 296, in main
+    model = _build_routed_model(cfg, device)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 99, in _build_routed_model
+    from nonmarkovian.model import RoutedDenoiser, RoutedDenoiserCNN
+ImportError: cannot import name 'RoutedDenoiser' from 'nonmarkovian.model' (/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/model.py)

@@ -1,0 +1,170 @@
+W0504 16:41:18.224000 23006209246336 torch/distributed/run.py:757] 
+W0504 16:41:18.224000 23006209246336 torch/distributed/run.py:757] *****************************************
+W0504 16:41:18.224000 23006209246336 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0504 16:41:18.224000 23006209246336 torch/distributed/run.py:757] *****************************************
+usage: train.py [-h] [--dfm_enhancer DFM_ENHANCER] [--dfm_melanoma]
+                [--max_len MAX_LEN] [--batch_size BATCH_SIZE]
+                [--epochs EPOCHS] [--lr LR] [--ema_decay EMA_DECAY]
+                [--num_timesteps NUM_TIMESTEPS]
+                [--bernoulli_scheduler {loglinear,linear}] [--without_T]
+                [--cond_drop_prob COND_DROP_PROB]
+                [--val_new_diff_calculate {full,training}] [--val_no_history]
+                [--no_val_no_history]
+                [--history_mode {trajectory,uniform,bernoulli_hat}]
+                [--num_timesteps_sample NUM_TIMESTEPS_SAMPLE]
+                [--router_topk ROUTER_TOPK] [--router_k ROUTER_K]
+                [--router_tau ROUTER_TAU]
+                [--router_lambda_bal ROUTER_LAMBDA_BAL] [--backbone {dit,cnn}]
+                [--cnn_stacks CNN_STACKS]
+                [--router_conv_kernel ROUTER_CONV_KERNEL]
+                [--router_out_channels ROUTER_OUT_CHANNELS]
+                [--d_model D_MODEL] [--num_classes NUM_CLASSES] [--no_labels]
+                [--aux_beta AUX_BETA] [--device DEVICE] [--save SAVE]
+                [--seed SEED] [--wandb] [--no-wandb]
+                [--wandb_project WANDB_PROJECT]
+                [--wandb_run_name WANDB_RUN_NAME]
+                [--val_batch_size VAL_BATCH_SIZE]
+                [--val_gen_batch VAL_GEN_BATCH]
+                [--val_epoch_freq VAL_EPOCH_FREQ]
+                [--fbd_epoch_freq FBD_EPOCH_FREQ]
+                [--best_fbd_epochs BEST_FBD_EPOCHS] [--fbcnn_ckpt FBCNN_CKPT]
+                [--fbcnn_num_cls FBCNN_NUM_CLS] [--fbcnn_stacks FBCNN_STACKS]
+                [--log_timing]
+usage: train.py [-h] [--dfm_enhancer DFM_ENHANCER] [--dfm_melanoma]
+                [--max_len MAX_LEN] [--batch_size BATCH_SIZE]
+                [--epochs EPOCHS] [--lr LR] [--ema_decay EMA_DECAY]
+                [--num_timesteps NUM_TIMESTEPS]
+                [--bernoulli_scheduler {loglinear,linear}] [--without_T]
+                [--cond_drop_prob COND_DROP_PROB]
+                [--val_new_diff_calculate {full,training}] [--val_no_history]
+                [--no_val_no_history]
+                [--history_mode {trajectory,uniform,bernoulli_hat}]
+                [--num_timesteps_sample NUM_TIMESTEPS_SAMPLE]
+                [--router_topk ROUTER_TOPK] [--router_k ROUTER_K]
+                [--router_tau ROUTER_TAU]
+                [--router_lambda_bal ROUTER_LAMBDA_BAL] [--backbone {dit,cnn}]
+                [--cnn_stacks CNN_STACKS]
+                [--router_conv_kernel ROUTER_CONV_KERNEL]
+                [--router_out_channels ROUTER_OUT_CHANNELS]
+                [--d_model D_MODEL] [--num_classes NUM_CLASSES] [--no_labels]
+                [--aux_beta AUX_BETA] [--device DEVICE] [--save SAVE]
+                [--seed SEED] [--wandb] [--no-wandb]
+                [--wandb_project WANDB_PROJECT]
+                [--wandb_run_name WANDB_RUN_NAME]
+                [--val_batch_size VAL_BATCH_SIZE]
+                [--val_gen_batch VAL_GEN_BATCH]
+                [--val_epoch_freq VAL_EPOCH_FREQ]
+                [--fbd_epoch_freq FBD_EPOCH_FREQ]
+                [--best_fbd_epochs BEST_FBD_EPOCHS] [--fbcnn_ckpt FBCNN_CKPT]
+                [--fbcnn_num_cls FBCNN_NUM_CLS] [--fbcnn_stacks FBCNN_STACKS]
+                [--log_timing]
+usage: train.py [-h] [--dfm_enhancer DFM_ENHANCER] [--dfm_melanoma]
+                [--max_len MAX_LEN] [--batch_size BATCH_SIZE]
+                [--epochs EPOCHS] [--lr LR] [--ema_decay EMA_DECAY]
+                [--num_timesteps NUM_TIMESTEPS]
+                [--bernoulli_scheduler {loglinear,linear}] [--without_T]
+                [--cond_drop_prob COND_DROP_PROB]
+                [--val_new_diff_calculate {full,training}] [--val_no_history]
+                [--no_val_no_history]
+                [--history_mode {trajectory,uniform,bernoulli_hat}]
+                [--num_timesteps_sample NUM_TIMESTEPS_SAMPLE]
+                [--router_topk ROUTER_TOPK] [--router_k ROUTER_K]
+                [--router_tau ROUTER_TAU]
+                [--router_lambda_bal ROUTER_LAMBDA_BAL] [--backbone {dit,cnn}]
+                [--cnn_stacks CNN_STACKS]
+                [--router_conv_kernel ROUTER_CONV_KERNEL]
+                [--router_out_channels ROUTER_OUT_CHANNELS]
+                [--d_model D_MODEL] [--num_classes NUM_CLASSES] [--no_labels]
+                [--aux_beta AUX_BETA] [--device DEVICE] [--save SAVE]
+                [--seed SEED] [--wandb] [--no-wandb]
+                [--wandb_project WANDB_PROJECT]
+                [--wandb_run_name WANDB_RUN_NAME]
+                [--val_batch_size VAL_BATCH_SIZE]
+                [--val_gen_batch VAL_GEN_BATCH]
+                [--val_epoch_freq VAL_EPOCH_FREQ]
+                [--fbd_epoch_freq FBD_EPOCH_FREQ]
+                [--best_fbd_epochs BEST_FBD_EPOCHS] [--fbcnn_ckpt FBCNN_CKPT]
+                [--fbcnn_num_cls FBCNN_NUM_CLS] [--fbcnn_stacks FBCNN_STACKS]
+                [--log_timing]
+train.py: error: argument --router_tau: invalid float value: '0.1--router_k'
+train.py: error: argument --router_tau: invalid float value: '0.1--router_k'
+train.py: error: argument --router_tau: invalid float value: '0.1--router_k'
+usage: train.py [-h] [--dfm_enhancer DFM_ENHANCER] [--dfm_melanoma]
+                [--max_len MAX_LEN] [--batch_size BATCH_SIZE]
+                [--epochs EPOCHS] [--lr LR] [--ema_decay EMA_DECAY]
+                [--num_timesteps NUM_TIMESTEPS]
+                [--bernoulli_scheduler {loglinear,linear}] [--without_T]
+                [--cond_drop_prob COND_DROP_PROB]
+                [--val_new_diff_calculate {full,training}] [--val_no_history]
+                [--no_val_no_history]
+                [--history_mode {trajectory,uniform,bernoulli_hat}]
+                [--num_timesteps_sample NUM_TIMESTEPS_SAMPLE]
+                [--router_topk ROUTER_TOPK] [--router_k ROUTER_K]
+                [--router_tau ROUTER_TAU]
+                [--router_lambda_bal ROUTER_LAMBDA_BAL] [--backbone {dit,cnn}]
+                [--cnn_stacks CNN_STACKS]
+                [--router_conv_kernel ROUTER_CONV_KERNEL]
+                [--router_out_channels ROUTER_OUT_CHANNELS]
+                [--d_model D_MODEL] [--num_classes NUM_CLASSES] [--no_labels]
+                [--aux_beta AUX_BETA] [--device DEVICE] [--save SAVE]
+                [--seed SEED] [--wandb] [--no-wandb]
+                [--wandb_project WANDB_PROJECT]
+                [--wandb_run_name WANDB_RUN_NAME]
+                [--val_batch_size VAL_BATCH_SIZE]
+                [--val_gen_batch VAL_GEN_BATCH]
+                [--val_epoch_freq VAL_EPOCH_FREQ]
+                [--fbd_epoch_freq FBD_EPOCH_FREQ]
+                [--best_fbd_epochs BEST_FBD_EPOCHS] [--fbcnn_ckpt FBCNN_CKPT]
+                [--fbcnn_num_cls FBCNN_NUM_CLS] [--fbcnn_stacks FBCNN_STACKS]
+                [--log_timing]
+train.py: error: argument --router_tau: invalid float value: '0.1--router_k'
+E0504 16:41:28.505000 23006209246336 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 2) local_rank: 0 (pid: 3177642) of binary: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/python
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+nonmarkovian.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-05-04_16:41:28
+  host      : farm-gpu0304.internal.sanger.ac.uk
+  rank      : 1 (local_rank: 1)
+  exitcode  : 2 (pid: 3177643)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-05-04_16:41:28
+  host      : farm-gpu0304.internal.sanger.ac.uk
+  rank      : 2 (local_rank: 2)
+  exitcode  : 2 (pid: 3177644)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-05-04_16:41:28
+  host      : farm-gpu0304.internal.sanger.ac.uk
+  rank      : 3 (local_rank: 3)
+  exitcode  : 2 (pid: 3177645)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-05-04_16:41:28
+  host      : farm-gpu0304.internal.sanger.ac.uk
+  rank      : 0 (local_rank: 0)
+  exitcode  : 2 (pid: 3177642)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

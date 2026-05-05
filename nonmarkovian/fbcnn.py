@@ -177,18 +177,26 @@ def _conv_layer_count_in_state_dict(state_dict: dict[str, torch.Tensor]) -> int 
     return (best + 1) if best >= 0 else None
 
 
+def _num_cls_in_state_dict(state_dict: dict[str, torch.Tensor]) -> int | None:
+    """Infer number of classes from ``cls_head.2.weight`` shape (output dim)."""
+    w = state_dict.get("cls_head.2.weight")
+    if w is not None:
+        return int(w.shape[0])
+    return None
+
+
 def load_fbcnn_classifier(
     ckpt_path: str | Path,
     device: torch.device,
     *,
-    num_cls: int = 81,
-    num_cnn_stacks: int = 1,
+    num_cls: int = 0,
+    num_cnn_stacks: int = 0,
     alphabet_size: int = 4,
 ) -> CNNModel:
     """Load frozen CNNModel(alphabet_size, num_cls, num_cnn_stacks, classifier=True) from a PyTorch checkpoint.
 
-    Fly-brain ``FBCNN.ckpt`` ships **one** stack (5 conv layers: indices0..4). Using ``num_cnn_stacks=4``
-    leaves most layers randomly initialized and **collapses Fréchet / FBD** to near zero vs real data.
+    ``num_cls`` and ``num_cnn_stacks`` are auto-detected from the checkpoint when not provided (or 0),
+    so the same call works for both fly-brain (81 cls, 1 stack) and Melanoma (47 cls, 4 stacks).
     """
     path = Path(ckpt_path)
     if not path.is_file():
@@ -202,6 +210,16 @@ def load_fbcnn_classifier(
     )
 
     n_ckpt_convs = _conv_layer_count_in_state_dict(raw_sd)
+    ckpt_num_cls = _num_cls_in_state_dict(raw_sd)
+
+    # Auto-detect stacks from checkpoint when not explicitly provided
+    if num_cnn_stacks <= 0:
+        num_cnn_stacks = (n_ckpt_convs // 5) if (n_ckpt_convs is not None and n_ckpt_convs > 0) else 1
+
+    # Auto-detect num_cls from checkpoint when not explicitly provided
+    if num_cls <= 0:
+        num_cls = ckpt_num_cls if ckpt_num_cls is not None else 81
+
     n_model_convs = 5 * num_cnn_stacks
     if n_ckpt_convs is not None and n_ckpt_convs != n_model_convs:
         warnings.warn(

@@ -96,7 +96,7 @@ def _build_args_namespace(cfg: dict, overrides: dict) -> Namespace:
 
 
 def _build_routed_model(cfg: dict, device: torch.device) -> torch.nn.Module:
-    from nonmarkovian.model import RoutedDenoiser, RoutedDenoiserCNN
+    from nonmarkovian.model import RoutedDenoiserCNN
 
     backbone = str(cfg.get("backbone", "cnn")).lower()
     num_classes = int(cfg.get("num_classes", 0) or 0)
@@ -213,7 +213,7 @@ def main() -> None:
     )
     p.add_argument("--no_dfm_melanoma", dest="dfm_melanoma", action="store_false")
     p.add_argument("--batch_size", type=int, default=0)
-    p.add_argument("--val_gen_batch", type=int, default=0)
+    p.add_argument("--val_gen_batch", type=int, default=512)
     p.add_argument("--n_fbd", type=int, default=0, help="0 = use the whole split.")
     p.add_argument(
         "--history_mode",
@@ -243,6 +243,29 @@ def main() -> None:
     cfg = dict(ckpt.get("args", {}))
     if not cfg:
         raise SystemExit("Checkpoint is missing the 'args' key; cannot reconstruct the model.")
+    state = ckpt.get("model")
+    if state is None:
+        raise SystemExit("Checkpoint missing 'model' state_dict.")
+    state = dict(state)
+
+    # Keep routed-CNN router dimensions aligned with the checkpoint tensors,
+    # even when local defaults changed after training.
+    w_phi = state.get("W_phi.weight")
+    if isinstance(w_phi, torch.Tensor) and w_phi.ndim == 3:
+        ckpt_out_channels = int(w_phi.shape[0])
+        ckpt_kernel = int(w_phi.shape[2])
+        if int(cfg.get("router_out_channels", ckpt_out_channels)) != ckpt_out_channels:
+            print(
+                "[eval] info: overriding router_out_channels "
+                f"{cfg.get('router_out_channels')} -> {ckpt_out_channels} from checkpoint."
+            )
+            cfg["router_out_channels"] = ckpt_out_channels
+        if int(cfg.get("router_conv_kernel", ckpt_kernel)) != ckpt_kernel:
+            print(
+                "[eval] info: overriding router_conv_kernel "
+                f"{cfg.get('router_conv_kernel')} -> {ckpt_kernel} from checkpoint."
+            )
+            cfg["router_conv_kernel"] = ckpt_kernel
 
     trainer = cli.trainer.strip().lower() or _detect_trainer(ckpt)
     if trainer not in ("routed_discrete", "simple_discrete"):
@@ -274,10 +297,6 @@ def main() -> None:
         model.num_timesteps = cli.num_timesteps_sample
     else:
         model = _build_simple_model(cfg, device)
-    state = ckpt.get("model")
-    if state is None:
-        raise SystemExit("Checkpoint missing 'model' state_dict.")
-    state = dict(state)
     strict_load = not bool(cli.no_strict_load)
     if "state_embed.weight" not in state and hasattr(model, "state_embed"):
         state_embed = getattr(model, "state_embed")
@@ -304,7 +323,8 @@ def main() -> None:
         alphas_sample = alphas_sample.to(device)
 
     # --- data loader ---
-    batch_size = int(cli.batch_size) if cli.batch_size > 0 else int(cfg.get("val_batch_size") or cfg.get("batch_size") or 128)
+    batch_size = int(cli.batch_size) if cli.batch_size > 0 else int(cfg.get("val_batch_size") or cfg.get("batch_size") or 8)
+    batch_size = 64
     loader = _build_loader(
         cfg,
         cli.split,
@@ -322,8 +342,8 @@ def main() -> None:
         fbcnn = load_fbcnn_classifier(
             fbcnn_path,
             device,
-            num_cls=int(getattr(args, "fbcnn_num_cls", 81) or 81),
-            num_cnn_stacks=int(getattr(args, "fbcnn_stacks", 1) or 1),
+            num_cls=int(cli.fbcnn_num_cls or 0),
+            num_cnn_stacks=int(cli.fbcnn_stacks or 0),
         )
 
     ck_best = ckpt.get("best_val_loss")

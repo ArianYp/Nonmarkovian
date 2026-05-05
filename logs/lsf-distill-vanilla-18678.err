@@ -10,3 +10,36 @@ wandb: Run `wandb offline` to turn off syncing.
 wandb: Syncing run simple_cnn_slm_fb
 wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
 wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/8kwlqvp9
+wandb: updating run metadata
+wandb: uploading config.yaml; uploading output.log
+wandb: 
+wandb: Run history:
+wandb:                            epoch ▁▁▁▂▂▂▂▂▃▃▃▃▄▄▄▄▅▅▅▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇█████
+wandb:           model/total_parameters ▁
+wandb: model/trainable_model_parameters ▁
+wandb:       model/trainable_parameters ▁
+wandb:     test/fbd_random_dna_baseline ▁
+wandb:                  train/batch_idx ▄▆█▇▃▇▇▂▁▇▁▂▇▄▂▇▇▄▁▁▇▂▇▇▆▆▁▁▃▇▆▄▆▄▇▅█▂▃▅
+wandb:                 train/batch_size ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:          train/batches_per_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                  train/diff_loss █▇▁▁▁▅█▁▅▁▁▃▄▁▃█▁▂▂▂▄▁▂▁▂█▄▂█▁▂▁▂▁▁▅▂▁▇▃
+wandb:             train/epoch_loss_avg █▃▂▂▂▂▃▂▂▂▂▂▂▂▂▂▂▂▁▂▁▂▂▂▂▂▂▂▂▂▂▁▂▂▂▂▂▂▂▃
+wandb:                              +30 ...
+wandb: 
+wandb: Run summary:
+wandb:                checkpoint_best_path /lustre/scratch126/c...
+wandb:            checkpoint_best_val_loss 0.25759
+wandb: checkpoint_best_val_loss_no_history 1.00073
+wandb:                     checkpoint_path /lustre/scratch126/c...
+wandb:                    cuda_device_name NVIDIA H200
+wandb:                         cuda_usable True
+wandb:                        dataset_size 83726
+wandb:                              device cuda:0
+wandb:                         distributed True
+wandb:                               epoch 800
+wandb:                                 +44 ...
+wandb: 
+wandb: 🚀 View run simple_cnn_slm_fb at: https://wandb.ai/shariflab/nonmarkovian/runs/8kwlqvp9
+wandb: ⭐️ View project at: https://wandb.ai/shariflab/nonmarkovian
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260501_024006-8kwlqvp9/logs

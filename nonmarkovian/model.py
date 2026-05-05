@@ -64,249 +64,6 @@ class _EncoderCallable:
         return self._fn(x)
 
 
-class RoutedDenoiser(nn.Module):
-    """
-    At reverse step ``t_start`` (0 … T−1):
-    - ``z_t`` = **token embeddings** of ``x_{t_start}`` (shape ``[B, L, d]``).
-    - Candidates ``k ∈ {t_start+1, …, T−1}``: ``z_k`` full-sequence embeddings ``[B, K, L, d]``.
-    - Compatibility ``e_k = (1/L) Σ_ℓ ((W z_t^ℓ) · z_k^ℓ) / √d`` — router scores use **all positions**, not sequence means.
-    - ``π =`` Gumbel–Softmax(``e``, τ) in training and ``softmax(e/τ)`` at eval; ``ctx = z_t + Σ_k π_k z_k``.
-    - **Single DiT**: ``ctx`` → DDiTBlocks conditioned on ``t_start`` (+ label) → logits.
-
-    Total depth: ``dec_layers`` DDiT blocks.
-    """
-
-    def __init__(
-        self,
-        *,
-        d_model: int,
-        nhead: int,
-        dec_layers: int,
-        dim_ff: int,
-        dropout: float,
-        max_len: int,
-        num_timesteps: int,
-        num_labels: int | None = None,
-        label_dim: int | None = None,
-        cond_dim: int | None = None,
-        router_tau: float = 0.1,
-        router_k: int = 1,  # unused; kept for checkpoint / CLI compatibility
-        time_freq_dim: int = 256,
-    ):
-        super().__init__()
-        self.d_model = d_model
-        self.num_timesteps = num_timesteps
-        self.max_len = max_len
-        self.router_tau = float(router_tau)
-        self.router_k = int(router_k)
-        self._inv_sqrt_d = 1.0 / math.sqrt(float(d_model))
-        self.ctx_mix_eps: float = 1e-4
-
-        if cond_dim is None:
-            cond_dim = d_model
-        self.cond_dim = cond_dim
-
-        n_blocks = dec_layers
-
-        # ---- shared input embedding (router + DiT input) ----
-        self.vocab_embed = EmbeddingLayer(d_model, VOCAB_SIZE)
-
-        # ---- Boltzmann router ----
-        self.W_phi = nn.Linear(d_model, d_model, bias=False)
-
-        # ---- single DiT backbone (denoising only) ----
-        self.sigma_map = TimestepEmbedder(cond_dim, frequency_embedding_size=time_freq_dim)
-        self.rotary = Rotary(d_model // nhead)
-        self.num_labels = num_labels
-        if num_labels is not None and num_labels > 0:
-            self.label_embed = LabelEmbedder(num_labels, cond_dim)
-        else:
-            self.label_embed = None
-
-        self.blocks = nn.ModuleList(
-            [DDiTBlock(d_model, nhead, cond_dim, dim_ff=dim_ff, dropout=dropout) for _ in range(n_blocks)]
-        )
-        self.output_layer = DDitFinalLayer(d_model, 4, cond_dim)
-
-        # Learnable **state-position** embedding: maps each absolute diffusion
-        # state index to a ``cond_dim`` vector that is added to the AdaLN
-        # conditioning ``c``. The router's π-weighted sum over picked history
-        # positions + the current state embedding tells the DiT *which*
-        # history positions were routed in.
-        self.state_embed = nn.Embedding(int(num_timesteps), cond_dim)
-        nn.init.normal_(self.state_embed.weight, std=0.02)
-        # Project the same state embedding into the router feature space so
-        # state identity affects the compatibility scores *before* routing.
-        self.state_router_proj = nn.Linear(cond_dim, d_model, bias=False)
-
-        self._enc_callable = _EncoderCallable(self._encode_tokens_t0)
-
-    # ----- embedding (router path; no Transformer) ---------------------------
-
-    def _embed(self, x: torch.Tensor) -> torch.Tensor:
-        """Token ids [B, L] or simplex [B, L, 4] -> embeddings [B, L, d]."""
-        if x.ndim == 3:
-            # Bernoulli simplex over nucleotides (A,C,G,T); map by expected embedding.
-            emb4 = self.vocab_embed.embedding[:4]
-            return x.to(dtype=emb4.dtype) @ emb4
-        return self.vocab_embed(x)
-
-    # ----- single DiT (full depth) -----------------------------------------
-
-    def _dit_features(self, x: torch.Tensor, t_idx: torch.Tensor) -> torch.Tensor:
-        """Run DiT blocks on token ids with conditioning timestep t_idx [B]. Returns [B, L, d]."""
-        h = self.vocab_embed(x)
-        c = F.silu(self.sigma_map(t_idx))
-        rot = self.rotary(h)
-        with amp_context(x.device):
-            for block in self.blocks:
-                h = block(h, rot, c)
-        return h
-
-    @property
-    def encoder(self):
-        """FBD: DiT hidden states at diffusion index0, no output head."""
-        return self._enc_callable
-
-    def _encode_tokens_t0(self, x: torch.Tensor) -> torch.Tensor:
-        t0 = x.new_zeros(x.shape[0], dtype=torch.long)
-        return self._dit_features(x, t0)
-
-    def encode_all_views(self, x_views: torch.Tensor) -> torch.Tensor:
-        """[B, T, L] or [B, T, L, 4] -> [B, T, L, d] via embeddings only."""
-        if x_views.ndim == 4:
-            B, T, L, _ = x_views.shape
-            return self._embed(x_views.reshape(B * T, L, 4)).view(B, T, L, -1)
-        B, T, L = x_views.shape
-        return self._embed(x_views.reshape(B * T, L)).view(B, T, L, -1)
-
-    def _embed_current_and_candidates(
-        self, x_views: torch.Tensor, t_start: int
-    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
-        if x_views.ndim == 4:
-            B, T, L, _ = x_views.shape
-        else:
-            B, T, L = x_views.shape
-        device = x_views.device
-        x_t = x_views[:, t_start]
-        z_t = self._embed(x_t)
-
-        K = T - t_start - 1
-        if K <= 0:
-            return z_t, None, None
-
-        rows = [self._embed(x_views[:, k_abs]) for k_abs in range(t_start + 1, T)]
-        z_cand = torch.stack(rows, dim=1)
-        taus_cand = torch.tensor(list(range(t_start + 1, T)), device=device, dtype=torch.long)
-        return z_t, z_cand, taus_cand
-
-    def _compatibility_scores_full_sequence(
-        self,
-        z_t: torch.Tensor,
-        z_cand: torch.Tensor,
-        state_t: torch.Tensor | None = None,
-        state_cand: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        """Per-position bilinear scores, mean over length. z_t: [B, L, d], z_cand: [B, K, L, d] -> [B, K]."""
-        if state_t is not None:
-            z_t = z_t + state_t.unsqueeze(1)
-        if state_cand is not None:
-            z_cand = z_cand + state_cand.unsqueeze(0).unsqueeze(2)
-        h_w = self.W_phi(z_t)
-        return (h_w.unsqueeze(1) * z_cand).sum(dim=-1).mean(dim=-1) * self._inv_sqrt_d
-
-    def _router_forward(self, e: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        tau = max(self.router_tau, 1e-6)
-        e_masked = _mask_to_topk_logits(e, self.router_k)
-        pi_soft = torch.softmax(e_masked / tau, dim=-1)
-        if self.training:
-            pi = F.gumbel_softmax(e_masked, tau=tau, dim=-1, hard=False)
-        else:
-            pi = pi_soft
-        return pi, pi_soft, pi
-
-    def _load_balance_loss(self, e: torch.Tensor, pi_soft: torch.Tensor) -> torch.Tensor:
-        B, K = e.shape
-        if K == 0:
-            return e.new_tensor(0.0)
-        k_hard = e.argmax(dim=-1)
-        f = F.one_hot(k_hard, num_classes=K).to(dtype=e.dtype).mean(dim=0)
-        pi_soft = F.softmax(e, dim=-1)
-        bar_pi = pi_soft.mean(dim=0)
-        return (float(K) * (f * bar_pi).sum()).to(e.dtype)
-
-    def forward(
-        self,
-        x_views: torch.Tensor,
-        t_start: int,
-        labels: torch.Tensor | None = None,
-        t_cond: int | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
-        if x_views.ndim == 4:
-            B, T, L, _ = x_views.shape
-        else:
-            B, T, L = x_views.shape
-        device = x_views.device
-        if not (0 <= t_start < T):
-            raise ValueError("t_start out of range")
-
-        z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
-
-        s_cur = self.state_embed(
-            torch.full((B,), int(t_start), device=device, dtype=torch.long)
-        )
-        #s_cur_router = self.state_router_proj(s_cur)
-        s_cur_router = None
-
-        if z_cand is None:
-            ctx = z_t
-            pi = z_t.new_zeros(B, 0)
-            loss_bal = z_t.new_tensor(0.0)
-            state_cond = s_cur
-        else:
-            s_cand = self.state_embed(taus_cand)            # [K, cond_dim]
-            #s_cand_router = self.state_router_proj(s_cand)  # [K, d_model]
-            s_cand_router = None
-            e = self._compatibility_scores_full_sequence(
-                z_t,
-                z_cand,
-                state_t=s_cur_router,
-                state_cand=s_cand_router,
-            )
-            pi_hat, pi_soft, _ = self._router_forward(e)
-            loss_bal = self._load_balance_loss(e, pi_soft) if self.training else e.new_tensor(0.0)
-            pi_w = pi_hat.view(B, -1, 1, 1)
-            ctx_mix = (z_cand * pi_w).sum(dim=1)
-            pi_l2 = pi_hat.pow(2).sum(dim=-1, keepdim=True).clamp(min=1e-8).sqrt().view(B, 1, 1)
-            #ctx_mix = ctx_mix / pi_l2
-            ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
-            ctx = z_t + ctx_mix
-            pi = pi_hat
-            # π-weighted sum of per-state embeddings -> [B, cond_dim].
-            state_cond = s_cur + pi_hat @ s_cand            # [B, cond_dim]
-
-        if t_cond is None:
-            t_b = torch.full((B,), int(t_start), device=device, dtype=torch.long)
-        elif isinstance(t_cond, float):
-            t_b = torch.full((B,), float(t_cond), device=device, dtype=torch.float32)
-        else:
-            t_b = torch.full((B,), int(t_cond), device=device, dtype=torch.long)
-        c = F.silu(self.sigma_map(t_b)) + state_cond
-        if self.label_embed is not None and labels is not None:
-            c = c + self.label_embed(labels)
-
-        rot = self.rotary(ctx)
-        with amp_context(ctx.device):
-            for block in self.blocks:
-                ctx = block(ctx, rot, c)
-            h_dec = ctx
-            logits = self.output_layer(ctx, c)
-
-        # DiT ctx lives in embedding space, not on the 4-simplex, so there's
-        # no natural ``seq_in``. Return None and let callers fall back to the
-        # raw current-view mask (x_t > 0) when they need a Bernoulli support
-        # mask (see sample.py).
-        return logits, pi, h_dec, loss_bal, None
 
 
 class RoutedDenoiserCNN(nn.Module):
@@ -343,14 +100,16 @@ class RoutedDenoiserCNN(nn.Module):
         # Set to 0 or negative to disable.
         self.router_log_every: int = 100
         self._router_log_step: int = 0
+        #self.state_router_proj = nn.Linear(self.cnn.hidden_dim, 4, bias=False)
         print("router_tau \n\n\n\n", router_tau, router_k)
         
-        self.router_out_channels = 64
-        rk = 1
+        self.router_out_channels = router_out_channels
+        rk = router_conv_kernel
         print("rk", rk)
+        print("router_out_channels", self.router_out_channels )
         if rk < 1 or rk % 2 == 0:
             raise ValueError("router_conv_kernel must be a positive odd int (e.g. 9)")
-        self.router_conv_kernel = rk
+        self.router_conv_kernel = router_conv_kernel
         pad = rk // 2
 
         self.W_phi = nn.Conv1d(
@@ -415,9 +174,16 @@ class RoutedDenoiserCNN(nn.Module):
         if K <= 0:
             return z_t, None, None
 
-        rows = [self._embed(x_views[:, k_abs]) for k_abs in range(t_start + 1, T)]
-        z_cand = torch.stack(rows, dim=1)
-        taus_cand = torch.tensor(list(range(t_start + 1, T)), device=device, dtype=torch.long)
+        # Vectorized: a single slice over the candidate range instead of a
+        # Python ``for`` loop that materializes ``K`` separate tensors and
+        # then ``torch.stack``s them. ``self._embed`` only does a dtype cast
+        # for 4-channel inputs, so this is essentially free.
+        cand = x_views[:, t_start + 1 : T]
+        if cand.ndim == 4:
+            z_cand = cand.to(dtype=torch.float32)
+        else:
+            raise ValueError("x_views must be 4-channel")
+        taus_cand = torch.arange(t_start + 1, T, device=device, dtype=torch.long)
         return z_t, z_cand, taus_cand
 
     def _compatibility_scores_full_sequence(
@@ -427,7 +193,18 @@ class RoutedDenoiserCNN(nn.Module):
         state_t: torch.Tensor | None = None,
         state_cand: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """``z_t``: [B, L, 4], ``z_cand``: [B, K, L, 4] → [B, K] via ``W_cur``/``W_phi`` dot similarity."""
+        """``z_t``: [B, L, 4], ``z_cand``: [B, K, L, 4] → [B, K] via ``W_cur``/``W_phi`` dot similarity.
+
+        When ``router_conv_kernel == 1`` both ``W_cur`` and ``W_phi`` are pointwise
+        linear maps, so the score collapses to a 4x4 bilinear form:
+
+            ``<W_cur z_t, W_phi z_cand> = z_t^T (W_cur^T W_phi) z_cand``.
+
+        The ``M = W_cur^T W_phi`` matrix is only ``[4, 4]`` and is summed per
+        position, which avoids materialising the ``[B, K, C_out, L]`` activation
+        tensor that the conv path produces. The result is mathematically
+        identical (up to fp32 rounding) to the conv path.
+        """
         B, Kc, L, four = z_cand.shape
         if four != 4:
             raise ValueError(f"expected last dim 4, got {four}")
@@ -439,6 +216,14 @@ class RoutedDenoiserCNN(nn.Module):
             z_cand = z_cand + state_cand.unsqueeze(0).unsqueeze(2)
         c_out = self.router_out_channels
         inv_sqrt = 1.0 / math.sqrt(float(L * c_out))
+
+        if int(self.router_conv_kernel) == 1:
+            wc = self.W_cur.weight.squeeze(-1)
+            wp = self.W_phi.weight.squeeze(-1)
+            M = wc.transpose(0, 1) @ wp
+            zt_proj = torch.einsum("bli,ij->blj", z_t, M)
+            return torch.einsum("blj,bklj->bk", zt_proj, z_cand) * inv_sqrt
+
         h_cur = self.W_cur(z_t.transpose(1, 2).contiguous())
         z_ck = z_cand.reshape(B * Kc, L, 4).transpose(1, 2).contiguous()
         h_cand = self.W_phi(z_ck).view(B, Kc, c_out, L)
@@ -452,11 +237,13 @@ class RoutedDenoiserCNN(nn.Module):
         #print("e", e)
         #e_masked = _mask_to_topk_logits(e, self.router_k)
         #print(e_masked)
+        #tau=0.001
         pi_soft = torch.softmax(e / tau, dim=-1)
         if self.training:
             pi = F.gumbel_softmax(e, tau=tau, dim=-1, hard=False)
         else:
-            pi = pi_soft
+            pi = F.one_hot(e.argmax(dim=-1), num_classes=e.shape[-1])
+        '''
         if self.training:
             self._router_log_step += 1
             if self.router_log_every > 0 and (self._router_log_step % self.router_log_every == 0):
@@ -472,6 +259,7 @@ class RoutedDenoiserCNN(nn.Module):
                         f"peak_sample={peak_sample:.4f}",
                         f"entropy_soft={entropy_soft:.4f}",
                     )
+        '''
         #print(pi, pi_soft)
         return pi, pi_soft, pi
 
@@ -490,6 +278,7 @@ class RoutedDenoiserCNN(nn.Module):
         t_start: int,
         labels: torch.Tensor | None = None,
         t_cond: int | None = None,
+        t_start_abs: int | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor, torch.Tensor]:
         if x_views.ndim == 4:
             B, T, L, _ = x_views.shape
@@ -498,14 +287,15 @@ class RoutedDenoiserCNN(nn.Module):
         device = x_views.device
         if not (0 <= t_start < T):
             raise ValueError("t_start out of range")
-
+        t_start_state = int(t_start) if t_start_abs is None else int(t_start_abs)
         z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
 
         # Absolute history-state features from the same ``cnn.time_embedder`` used
-        # for the current diffusion time conditioning.
-        s_cur = self._embed_state_times(
-            torch.full((B,), int(t_start), device=device, dtype=torch.long)
-        )
+        # for the current diffusion time conditioning. Use the *absolute* timestep
+        # (``t_start_state``), not the local index into the (possibly compacted)
+        # ``x_views`` tensor, so state-time conditioning stays correct when the
+        # caller hands us only ``[t_start_abs..T-1]`` views.
+
         #s_cur_router = self.state_router_proj(s_cur)    # [B, 4]
         s_cur_router = None
 
@@ -513,16 +303,16 @@ class RoutedDenoiserCNN(nn.Module):
             ctx = z_t
             pi = z_t.new_zeros(B, 0)
             loss_bal = z_t.new_tensor(0.0)
-            state_cond = s_cur
+            state_cond = None
         else:
-            s_cand = self._embed_state_times(taus_cand)     # [K, H]
+            #s_cand = self._embed_state_times(taus_cand)     # [K, H]
             #s_cand_router = self.state_router_proj(s_cand)  # [K, 4]
-            s_cand_router = None
+            #s_cand_router = None
             e = self._compatibility_scores_full_sequence(
                 z_t,
                 z_cand,
                 state_t=s_cur_router,
-                state_cand=s_cand_router,
+                state_cand=None,
             )
             pi_hat, pi_soft, _ = self._router_forward(e)
             loss_bal = self._load_balance_loss(e, pi_soft) if self.training else e.new_tensor(0.0)
@@ -545,7 +335,7 @@ class RoutedDenoiserCNN(nn.Module):
             state_cond = None
         seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)
         if t_cond is None:
-            t_b = torch.full((B,), int(t_start), device=device, dtype=torch.long)
+            t_b = torch.full((B,), int(t_start_state), device=device, dtype=torch.long)
         elif isinstance(t_cond, float):
             t_b = torch.full((B,), float(t_cond), device=device, dtype=torch.float32)
         else:

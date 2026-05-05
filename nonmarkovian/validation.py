@@ -515,8 +515,10 @@ def compute_fbd_routed(
     local_target = (int(n_samples) + ws - 1) // ws
 
     real_chunks: list[torch.Tensor] = []
-    label_chunks: list[torch.Tensor] = []
+    gen_parts: list[torch.Tensor] = []
     collected = 0
+    gen = torch.Generator(device=device)
+    gen.manual_seed(int(args.seed) + 424242 + int(epoch) * 100003 + rk * 101)
     for batch in val_loader:
         if collected >= local_target:
             break
@@ -529,8 +531,24 @@ def compute_fbd_routed(
             real_chunks.append(fbcnn_embed_sequences(fbcnn, x0[:take], pad[:take]))
         else:
             real_chunks.append(encoder_mean_pool_embeddings(encoder, x0[:take], pad[:take]))
-        if use_labs and labels is not None:
-            label_chunks.append(labels[:take].to(device))
+        lab = labels[:take].to(device) if (use_labs and labels is not None) else None
+        #print(str(getattr(args, "history_mode", "trajectory")))
+        g = sample_sequences(
+            model,
+            alphas,
+            int(take),
+            seq_len,
+            device,
+            num_timesteps_train=int(args.num_timesteps),
+            labels=lab,
+            bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
+            generator=gen,
+            history_mode=str(getattr(args, "history_mode", "trajectory")),
+        )
+        if fbcnn is not None:
+            gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
+        else:
+            gen_parts.append(encoder_mean_pool_embeddings(encoder, g))
         collected += take
 
     real_emb_local = (
@@ -542,38 +560,6 @@ def compute_fbd_routed(
     if real_emb.shape[0] < 2:
         return float("nan")
     real_emb = real_emb[: int(n_samples)]
-
-    labels_local: torch.Tensor | None = None
-    if use_labs and label_chunks:
-        labels_local = torch.cat(label_chunks, dim=0)
-
-    gen_parts: list[torch.Tensor] = []
-    gen = torch.Generator(device=device)
-    gen.manual_seed(int(args.seed) + 424242 + int(epoch) * 100003 + rk * 101)
-    local_gen_n = min(local_target, real_emb_local.shape[0]) if real_emb_local.ndim == 2 else local_target
-    local_gen_n = max(int(local_gen_n), 0)
-    vgb = int(args.val_gen_batch)
-    for start in range(0, local_gen_n, vgb):
-        bs = min(vgb, local_gen_n - start)
-        lab = labels_local[start : start + bs] if labels_local is not None else None
-        g = sample_sequences(
-            model,
-            alphas,
-            bs,
-            seq_len,
-            device,
-            num_timesteps_train=int(args.num_timesteps),
-            labels=lab,
-            bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
-            generator=gen,
-            history_mode=str(getattr(args, "history_mode", "trajectory")),
-        )
-        lines = ids_to_strings(g.cpu())
-        #print(lines)
-        if fbcnn is not None:
-            gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
-        else:
-            gen_parts.append(encoder_mean_pool_embeddings(encoder, g))
 
     emb_dim = real_emb.shape[1] if real_emb.ndim == 2 and real_emb.numel() else 0
     gen_emb_local = (
@@ -616,8 +602,10 @@ def compute_fbd_simple(
     local_target = (int(n_samples) + ws - 1) // ws
 
     real_chunks: list[torch.Tensor] = []
-    label_chunks: list[torch.Tensor] = []
+    gen_parts: list[torch.Tensor] = []
     collected = 0
+    gen = torch.Generator(device=device)
+    gen.manual_seed(int(args.seed) + 424242 + int(epoch) * 100003 + rk * 101)
     for batch in val_loader:
         if collected >= local_target:
             break
@@ -630,37 +618,11 @@ def compute_fbd_simple(
             real_chunks.append(fbcnn_embed_sequences(fbcnn, x0[:take], pad[:take]))
         else:
             real_chunks.append(encoder_mean_pool_embeddings(encoder, x0[:take], pad[:take]))
-        if use_labs and labels is not None:
-            label_chunks.append(labels[:take].to(device))
-        collected += take
-
-    real_emb_local = (
-        torch.cat(real_chunks, dim=0)
-        if real_chunks
-        else torch.empty((0, 0), device=device)
-    )
-    real_emb = _gather_concat_embeddings(real_emb_local)
-    if real_emb.shape[0] < 2:
-        return float("nan")
-    real_emb = real_emb[: int(n_samples)]
-
-    labels_local: torch.Tensor | None = None
-    if use_labs and label_chunks:
-        labels_local = torch.cat(label_chunks, dim=0)
-
-    gen_parts: list[torch.Tensor] = []
-    gen = torch.Generator(device=device)
-    gen.manual_seed(int(args.seed) + 424242 + int(epoch) * 100003 + rk * 101)
-    local_gen_n = min(local_target, real_emb_local.shape[0]) if real_emb_local.ndim == 2 else local_target
-    local_gen_n = max(int(local_gen_n), 0)
-    vgb = int(args.val_gen_batch)
-    for start in range(0, local_gen_n, vgb):
-        bs = min(vgb, local_gen_n - start)
-        lab = labels_local[start : start + bs] if labels_local is not None else None
+        lab = labels[:take].to(device) if (use_labs and labels is not None) else None
         g = sample_sequences_simple(
             model,
             alphas,
-            bs,
+            int(take),
             seq_len,
             device,
             num_timesteps_train=int(args.num_timesteps),
@@ -672,6 +634,17 @@ def compute_fbd_simple(
             gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:
             gen_parts.append(encoder_mean_pool_embeddings(encoder, g))
+        collected += take
+
+    real_emb_local = (
+        torch.cat(real_chunks, dim=0)
+        if real_chunks
+        else torch.empty((0, 0), device=device)
+    )
+    real_emb = _gather_concat_embeddings(real_emb_local)
+    if real_emb.shape[0] < 2:
+        return float("nan")
+    real_emb = real_emb[: int(n_samples)]
 
     emb_dim = real_emb.shape[1] if real_emb.ndim == 2 and real_emb.numel() else 0
     gen_emb_local = (

@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from nonmarkovian.device_utils import resolve_device_arg
 from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views_bernoulli
-from nonmarkovian.model import RoutedDenoiser, RoutedDenoiserCNN
+from nonmarkovian.model import RoutedDenoiserCNN
 from nonmarkovian.vocab import IDX_TO_TOKEN
 
 
@@ -149,13 +149,6 @@ def sample_sequences(
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(num_steps), device=device, dtype=torch.float32)
         t_start = num_steps - i
 
-        views_buffer = _refresh_views_buffer(
-            views_buffer,
-            hat_x0_ids,
-            history_mode=history_mode,
-            bernoulli_scheduler=bernoulli_scheduler,
-            generator=generator,
-        )
         views_buffer[:, t_start] = x_t
         logits, _pi, _h, _lb, seq_in = model(
             views_buffer, t_start, labels=labels, t_cond=float(t[0, 0].item())

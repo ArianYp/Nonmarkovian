@@ -151,26 +151,63 @@ def sample_all_views_bernoulli(
     x0: torch.Tensor,
     num_timesteps: int,
     *,
+    t_start: int | None = None,
     scheduler: str = "loglinear",
     generator: torch.Generator | None = None,
+    num_classes: int = 4,
 ) -> torch.Tensor:
     """Sample Bernoulli simplex views x_1..x_T independently from x_0.
 
     Returns shape ``[B, T, L, 4]`` where each view ``tau`` uses ``t=(tau+1)/T``.
+    If ``t_start`` is provided, returns only needed views ``tau in [t_start, T-1]``,
+    with shape ``[B, T - t_start, L, 4]``.
+
+    Vectorized across timesteps -- a single random tensor and a single
+    ``torch.where`` replace the previous per-step Python loop / per-step
+    kernel launches.
     """
     T = int(num_timesteps)
     if T < 1:
         raise ValueError("num_timesteps must be >= 1")
-    views = []
-    for tau in range(T):
-        t_cont = torch.full(
-            (x0.shape[0], 1),
-            float(tau + 1) / float(T),
-            device=x0.device,
-            dtype=torch.float32,
+    tau_begin = 0 if t_start is None else int(t_start)
+    if not (0 <= tau_begin < T):
+        raise ValueError(f"t_start must be in [0, {T - 1}]")
+
+    B, L = x0.shape
+    K = T - tau_begin
+    device = x0.device
+
+    taus = torch.arange(tau_begin, T, device=device, dtype=torch.float32)
+    t_cont = (taus + 1.0) / float(T)  # [K]
+
+    if scheduler == "loglinear":
+        expect_nums = torch.clamp(
+            torch.exp(torch.log(torch.tensor(float(num_classes), device=device)) * t_cont),
+            min=1.0,
         )
-        views.append(corrupt_sequence_bernoulli(x0, t_cont, scheduler=scheduler, generator=generator))
-    return torch.stack(views, dim=1)
+    elif scheduler == "linear":
+        expect_nums = torch.clamp(float(num_classes) * t_cont, min=1.0)
+    else:
+        raise ValueError(f"Unknown Bernoulli scheduler: {scheduler}")
+
+    bernoulli_param = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
+    bernoulli_param = torch.clamp(bernoulli_param, min=0.0, max=1.0).view(1, K, 1, 1)
+
+    one_hot = torch.nn.functional.one_hot(x0.long(), num_classes=num_classes).to(
+        dtype=torch.float32
+    )  # [B, L, C]
+    one_hot = one_hot.unsqueeze(1).expand(B, K, L, num_classes)
+
+    shape = (B, K, L, num_classes)
+    if generator is None:
+        u = torch.rand(shape, device=device, dtype=torch.float32)
+    else:
+        u = torch.rand(shape, device=device, dtype=torch.float32, generator=generator)
+    samples = (u < bernoulli_param).to(dtype=torch.float32)
+
+    x_t = torch.where(one_hot > 0, one_hot, samples)
+    x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+    return x_t
 
 
 def transition_from_predicted_x0(
