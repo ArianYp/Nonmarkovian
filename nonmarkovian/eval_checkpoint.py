@@ -231,6 +231,14 @@ def main() -> None:
     p.add_argument("--skip_val_loss", action="store_true")
     p.add_argument("--skip_fbd", action="store_true")
     p.add_argument(
+        "--fbd_no_history",
+        action="store_true",
+        help=(
+            "For routed models: also compute FBD with uniform history (all non-current "
+            "slots set to 1/C). Directly comparable to the SLM/simple baseline."
+        ),
+    )
+    p.add_argument(
         "--no_strict_load",
         action="store_true",
         help="Allow partial checkpoint loads (default is strict=True).",
@@ -390,6 +398,7 @@ def main() -> None:
         if n_fbd < 2:
             print("[eval] fbd: skipped (need >= 2 examples).")
         else:
+            tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
             if trainer == "routed_discrete":
                 fbd = compute_fbd_routed(
                     model, loader, alphas_sample, device, args,
@@ -398,6 +407,22 @@ def main() -> None:
                     epoch=int(ck_epoch) if ck_epoch is not None else 0,
                     fbcnn=fbcnn,
                 )
+                print(f"[eval] {tag}: {float(fbd):.4f}  (n_samples={n_fbd})")
+
+                if cli.fbd_no_history:
+                    # Second pass: uniform history — all non-current slots set to 1/C.
+                    # Comparable to SLM/simple model (no history information).
+                    import copy
+                    args_noh = copy.copy(args)
+                    args_noh.history_mode = "uniform"
+                    fbd_noh = compute_fbd_routed(
+                        model, loader, alphas_sample, device, args_noh,
+                        n_samples=n_fbd,
+                        seq_len=int(getattr(args, "max_len", 500)),
+                        epoch=int(ck_epoch) if ck_epoch is not None else 0,
+                        fbcnn=fbcnn,
+                    )
+                    print(f"[eval] {tag}_no_history: {float(fbd_noh):.4f}  (n_samples={n_fbd})")
             else:
                 fbd = compute_fbd_simple(
                     model, loader, alphas_sample, device, args,
@@ -406,8 +431,7 @@ def main() -> None:
                     epoch=int(ck_epoch) if ck_epoch is not None else 0,
                     fbcnn=fbcnn,
                 )
-            tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
-            print(f"[eval] {tag}: {float(fbd):.4f}  (n_samples={n_fbd})")
+                print(f"[eval] {tag}: {float(fbd):.4f}  (n_samples={n_fbd})")
 
 
 if __name__ == "__main__":
