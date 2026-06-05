@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 452, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 260, in main
+    device = resolve_device_arg(cli.device)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/device_utils.py", line 30, in resolve_device_arg
+    return torch.device("cuda" if cuda_is_usable() else "cpu")
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/device_utils.py", line 17, in cuda_is_usable
+    torch.zeros(1, device="cuda")
+KeyboardInterrupt

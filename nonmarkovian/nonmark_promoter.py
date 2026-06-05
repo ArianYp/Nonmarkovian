@@ -383,6 +383,14 @@ class RoutedDenoiserPromoter(nn.Module):
         t_b = torch.full((B,), t_float, device=device, dtype=torch.float32)
 
         logits = self.promoter_model(seq_in, t_b, signal)   # [B, L, 4]
+
+        # Zero-weighted touch on router weights so DDP sees them participate
+        # in the autograd graph even when K = 0 (no candidates this step).
+        # Without this, t_start = num_timesteps - 1 → router weights skipped →
+        # DDP error: "Expected to have finished reduction in the prior iteration".
+        if self.training and z_cand is None:
+            logits = logits + 0.0 * (self.W_cur.weight.sum() + self.W_phi.weight.sum())
+
         return logits, pi, loss_bal, seq_in
 
 
@@ -683,7 +691,10 @@ def validate_promoter(
         total_tokens += B * L
 
         # ── SEI sp-mse  ──────────────────────────────────────────────────
-        if sei is not None and h3k4me3_mask is not None and batch_idx < max_sei_batches:
+        # max_sei_batches < 0 ⇒ run on all batches (full validation set).
+        sei_active = (sei is not None and h3k4me3_mask is not None
+                      and (max_sei_batches < 0 or batch_idx < max_sei_batches))
+        if sei_active:
             real_oh   = F.one_hot(x0, num_classes=4).float()
             real_sc   = _get_sei_profile(sei, h3k4me3_mask, real_oh, device)
 
@@ -758,7 +769,8 @@ def _parse_args() -> argparse.Namespace:
     # Training
     p.add_argument("--batch_size",  type=int, default=64)
     p.add_argument("--epochs",      type=int, default=200)
-    p.add_argument("--lr",          type=float, default=3e-4)
+    p.add_argument("--lr",           type=float, default=5e-4)
+    p.add_argument("--weight_decay", type=float, default=0.0)
     p.add_argument("--ema_decay",   type=float, default=0.9999,
                    help="EMA decay (0 = disable).")
     # Diffusion
@@ -772,18 +784,18 @@ def _parse_args() -> argparse.Namespace:
                    choices=("loglinear", "linear"))
     p.add_argument("--without_T",       action="store_true",
                    help="Do not scale NLL loss by T (matches SLM training.without_T).")
-    p.add_argument("--corruption_mode", type=str, default="independent",
+    p.add_argument("--corruption_mode", type=str, default="trajectory",
                    choices=("independent", "trajectory"))
     p.add_argument("--history_mode",    type=str, default="trajectory",
                    choices=("trajectory", "uniform"),
                    help="History fill mode for reverse sampling views buffer.")
     # Router
-    p.add_argument("--router_tau",          type=float, default=1.0)
+    p.add_argument("--router_tau",          type=float, default=0.01)
     p.add_argument("--router_k",            type=int,   default=1,
                    help="Kept for CLI parity with train.py; routing uses full softmax mix.")
     p.add_argument("--router_conv_kernel",  type=int,   default=1,
                    help="W_cur / W_phi Conv1d kernel (odd; 1 = pointwise bilinear).")
-    p.add_argument("--router_out_channels", type=int,   default=128)
+    p.add_argument("--router_out_channels", type=int,   default=256)
     p.add_argument("--router_lambda_bal",   type=float, default=0.0,
                    help="Switch-style load-balancing loss weight (0 = off).")
     # Model
@@ -799,7 +811,10 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--sei_epoch_freq",  type=int, default=10,
                    help="Run SEI sp-mse every N epochs (expensive; 0 = disable).")
     p.add_argument("--max_sei_batches", type=int, default=4,
-                   help="Max val batches used for SEI scoring.")
+                   help="Max val batches used for SEI scoring (-1 = all).")
+    p.add_argument("--best_mse_epochs", type=int, default=50,
+                   help="In the last N epochs run SEI on ALL val batches every epoch "
+                        "and save a best-sp_mse checkpoint.")
     p.add_argument("--save",    type=str, default="checkpoints/promoter.pt")
     p.add_argument("--seed",    type=int, default=0)
     # W&B
@@ -845,7 +860,7 @@ def _train_loop(
     train_sampler: DistributedSampler | None = None,
 ) -> None:
 
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     ema = _EMA(unwrap_ddp(model).parameters(), decay=float(args.ema_decay)) \
           if float(args.ema_decay) > 0 else None
 
@@ -879,6 +894,8 @@ def _train_loop(
 
     best_val_loss   = float("inf")
     best_save_path: Path | None = None
+    best_mse        = float("inf")
+    best_mse_path: Path | None = None
     global_step     = 0
 
     T         = int(args.T)
@@ -1006,18 +1023,25 @@ def _train_loop(
                 ema.store()
                 ema.copy_to()
 
+            in_mse_window = (args.epochs - epoch) <= args.best_mse_epochs
+            run_sei_periodic = (
+                args.sei_epoch_freq > 0
+                and (epoch + 1) % args.sei_epoch_freq == 0
+            )
             run_sei = (
                 sei is not None
                 and h3k4me3_mask is not None
-                and args.sei_epoch_freq > 0
-                and (epoch + 1) % args.sei_epoch_freq == 0
+                and (in_mse_window or run_sei_periodic)
             )
+            # In the best-mse window: SEI on the full val set every epoch.
+            # Outside the window: keep the configured cap (default 4 batches).
+            sei_batches_this_epoch = -1 if in_mse_window else args.max_sei_batches
             vmetrics = validate_promoter(
                 m, val_loader, device, args,
                 epoch=epoch, global_step=global_step,
                 sei=sei if run_sei else None,
                 h3k4me3_mask=h3k4me3_mask if run_sei else None,
-                max_sei_batches=args.max_sei_batches,
+                max_sei_batches=sei_batches_this_epoch,
             )
 
             if rank == 0:
@@ -1046,6 +1070,27 @@ def _train_loop(
                         wandb.summary["checkpoint_best_path"]     = str(best_save_path.resolve())
                         wandb.summary["checkpoint_best_val_loss"] = best_val_loss
 
+                # Best-MSE checkpoint — only inside the last-N-epochs window,
+                # using the full val-set sp_mse (representative, not biased to
+                # the first 4 batches like sei_epoch_freq evaluations).
+                cur_mse = vmetrics.get("val/sp_mse")
+                if in_mse_window and cur_mse is not None and float(cur_mse) < best_mse:
+                    best_mse = float(cur_mse)
+                    save_path = _resolve_save_path(args.save, use_wandb)
+                    best_mse_path = save_path.with_name(f"{save_path.stem}.best_mse{save_path.suffix}")
+                    best_mse_path.parent.mkdir(parents=True, exist_ok=True)
+                    torch.save({
+                        "model":            m.state_dict(),
+                        "args":             vars(args),
+                        "best_mse":         best_mse,
+                        "best_mse_epoch":   epoch + 1,
+                        "best_mse_global_step": global_step,
+                    }, best_mse_path)
+                    print(f"  best-mse checkpoint → {best_mse_path}  (sp_mse={best_mse:.6f})")
+                    if use_wandb:
+                        wandb.summary["checkpoint_best_mse_path"] = str(best_mse_path.resolve())
+                        wandb.summary["checkpoint_best_mse"]      = best_mse
+
             if ema is not None:
                 ema.restore()
 
@@ -1063,6 +1108,8 @@ def _train_loop(
         print(f"Saved final checkpoint: {save_path}")
         if best_save_path is not None:
             print(f"Best checkpoint:  {best_save_path}  (val/loss={best_val_loss:.4f})")
+        if best_mse_path is not None:
+            print(f"Best-mse checkpoint:  {best_mse_path}  (sp_mse={best_mse:.6f})")
     if ddp:
         barrier()
 
@@ -1133,7 +1180,7 @@ def main() -> None:
         from torch.nn.parallel import DistributedDataParallel as DDP
         model = DDP(
             model, device_ids=[local_rank], output_device=local_rank,
-            find_unused_parameters=True,
+            find_unused_parameters=False,
         )
 
     n_params = sum(p.numel() for p in unwrap_ddp(model).parameters())

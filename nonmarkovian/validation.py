@@ -203,6 +203,7 @@ def print_epoch_diffusion_dna_samples(
             labels=labels,
             bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
             generator=gen,
+            corruption_mode=str(getattr(args, "corruption_mode", "trajectory")),
         )
     else:
         x = sample_sequences_simple(
@@ -542,9 +543,11 @@ def compute_fbd_routed(
             device,
             num_timesteps_train=int(args.num_timesteps),
             labels=lab,
+            guidance_scale=float(getattr(args, "guidance_scale", 0.0)),
             bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
             generator=gen,
             history_mode=str(getattr(args, "history_mode", "trajectory")),
+            corruption_mode=str(getattr(args, "corruption_mode", "trajectory")),
         )
         if fbcnn is not None:
             gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
@@ -628,6 +631,7 @@ def compute_fbd_simple(
             device,
             num_timesteps_train=int(args.num_timesteps),
             labels=lab,
+            guidance_scale=float(getattr(args, "guidance_scale", 0.0)),
             bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
             generator=gen,
         )

@@ -225,6 +225,7 @@ def sample_all_views_bernoulli(
         else:
             u = torch.rand(shape, device=device, dtype=torch.float32, generator=generator)
         # u broadcasts over K dimension against bernoulli_param [1, K, 1, 1]
+        #print(u.shape, bernoulli_param.shape)
 
     samples = (u < bernoulli_param).to(dtype=torch.float32)  # [B, K, L, C]
 

@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/eval_simple_promoter_mse.py", line 160, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/eval_simple_promoter_mse.py", line 156, in main
+    evaluate(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/eval_simple_promoter_mse.py", line 63, in evaluate
+    model.load_state_dict(ckpt["model"])
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/nn/modules/module.py", line 2189, in load_state_dict
+    raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+RuntimeError: Error(s) in loading state_dict for SimpleDenoiserPromoter:
+	Unexpected key(s) in state_dict: "W_cur.weight", "W_phi.weight". 

@@ -217,7 +217,8 @@ def _parse_train_args() -> argparse.Namespace:
         "--router_k",
         type=int,
         default=1,
-        help="Ignored (routing mixes all future views with Gumbel-Softmax / softmax); kept for old configs",
+        help="Top-k candidate states kept before (Gumbel-)softmax routing; others masked to -inf. "
+             "k>=num_candidates → full softmax over all future views.",
     )
     p.add_argument(
         "--router_tau",
@@ -622,7 +623,9 @@ def _train_loop(
         extras: list[str] = []
         if args.backbone == "dit" and args.aux_beta > 0 and args.num_classes > 1:
             extras.append("(val/loss baseline includes uniform aux)")
+        '''
         if test_loader is not None:
+            
             n_fbd0 = len(test_loader.dataset)
             if n_fbd0 >= 2:
                 fbd_rand = compute_fbd_uniform_random_baseline(
@@ -638,6 +641,7 @@ def _train_loop(
                 extras.append(f"FBD random-DNA vs test (n={n_fbd0}) ~ {fbd_rand:.4f}")
             else:
                 extras.append("pre-train FBD skipped (test split has <2 examples)")
+        '''
         suffix = ("  " + "  ".join(extras)) if extras else ""
         print(
             f"Chance baseline (uniform 4-class logits, mean NLL = log 4, scale={diff_scale:g}):  "
@@ -722,6 +726,8 @@ def _train_loop(
                 nlog_p = float(args.num_timesteps) * nlog_p
             denom = float(target.shape[0] * target.shape[1])
             diff_loss = nlog_p.float().sum() / denom
+            alpha_tm1 = float(alphas[max(t_start - 1, 0)].item())
+            diff_loss = diff_loss
 
             loss = diff_loss
             if args.router_lambda_bal > 0:

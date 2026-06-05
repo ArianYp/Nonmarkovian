@@ -216,8 +216,14 @@ def _parse_train_simple_args() -> argparse.Namespace:
     p.add_argument(
         "--fbd_epoch_freq",
         type=int,
-        default=50,
+        default=500,
         help="Run FBD metric + DNA preview every N epochs (default 5; set 1 for every epoch).",
+    )
+    p.add_argument(
+        "--best_fbd_epochs",
+        type=int,
+        default=200,
+        help="In the last N epochs run FBD every epoch and save a best-FBD checkpoint.",
     )
 
     p.add_argument(
@@ -511,6 +517,8 @@ def main() -> None:
 
         best_val_loss = float("inf")
         best_save_path: Path | None = None
+        best_fbd = float("inf")
+        best_fbd_save_path: Path | None = None
         global_step = 0
         for epoch in range(args.epochs):
             if train_sampler is not None:
@@ -665,7 +673,8 @@ def main() -> None:
                     ema.store()
                     ema.copy_to()
                 do_val_loss = (epoch + 1) % args.val_epoch_freq == 0
-                do_fbd = (epoch + 1) % args.fbd_epoch_freq == 0
+                in_fbd_window = (args.epochs - epoch) <= args.best_fbd_epochs
+                do_fbd = in_fbd_window or ((epoch + 1) % args.fbd_epoch_freq == 0)
 
                 if do_val_loss:
                     vmetrics = validate_simple(
@@ -724,6 +733,27 @@ def main() -> None:
                             print(f"  {tag}={fbd:.4f}")
                             if use_wandb:
                                 wandb.log({"val/fbd": float(fbd), "epoch": epoch + 1}, step=global_step)
+                            if in_fbd_window and float(fbd) < best_fbd:
+                                best_fbd = float(fbd)
+                                save_path = _resolve_save_path(args.save, use_wandb)
+                                best_fbd_save_path = save_path.with_name(f"{save_path.stem}.best_fbd{save_path.suffix}")
+                                best_fbd_save_path.parent.mkdir(parents=True, exist_ok=True)
+                                fbd_payload = {
+                                    "model": m.state_dict(),
+                                    "args": cfg,
+                                    "alphas_sample": alphas_sample.cpu(),
+                                    "trainer": "simple_discrete",
+                                    "best_fbd": best_fbd,
+                                    "best_fbd_epoch": epoch + 1,
+                                    "best_fbd_global_step": global_step,
+                                }
+                                if ah is not None:
+                                    fbd_payload["aux_head"] = ah.state_dict()
+                                torch.save(fbd_payload, best_fbd_save_path)
+                                print(f"  best-fbd checkpoint updated: {best_fbd_save_path} ({tag}={best_fbd:.4f})")
+                                if use_wandb:
+                                    wandb.summary["checkpoint_best_fbd_path"] = str(best_fbd_save_path.resolve())
+                                    wandb.summary["checkpoint_best_fbd"] = best_fbd
                     elif rank == 0:
                         print("  fbd=skipped (<2 val examples)")
                     if rank == 0:
@@ -758,6 +788,8 @@ def main() -> None:
             print(f"saved {save_path}")
             if best_save_path is not None:
                 print(f"best val checkpoint: {best_save_path} (val/loss={best_val_loss:.4f})")
+            if best_fbd_save_path is not None:
+                print(f"best fbd checkpoint: {best_fbd_save_path} (fbd={best_fbd:.4f})")
 
             if use_wandb:
                 wandb.summary["checkpoint_path"] = str(save_path.resolve())

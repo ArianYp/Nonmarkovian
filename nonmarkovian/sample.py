@@ -113,9 +113,11 @@ def sample_sequences(
     *,
     num_timesteps_train: int | None = None,
     labels: torch.Tensor | None = None,
+    guidance_scale: float = 0.0,
     bernoulli_scheduler: str = "loglinear",
     generator: torch.Generator | None = None,
     history_mode: str = "trajectory",
+    corruption_mode: str = "trajectory",
 ) -> torch.Tensor:
     """SLM-style ``new_diff`` reverse sampling with routed (history-aware) denoiser.
 
@@ -132,10 +134,21 @@ def sample_sequences(
     vocab = 4
     #print(num_steps)
     T = num_steps
+    #corruption_mode = "trajectory"
+    print(corruption_mode,"corruption_mode")
+
+    use_cfg = float(guidance_scale) != 0.0 and labels is not None
+    null_lab: torch.Tensor | None = None
+    if use_cfg:
+        num_cls_for_null = getattr(model, "num_labels", None)
+        if num_cls_for_null is not None and int(num_cls_for_null) > 0:
+            null_lab = torch.full_like(labels, int(num_cls_for_null))
+        else:
+            null_lab = None  # DiT backbone uses None as the null path
 
     x_t = torch.full((batch, seq_len, vocab), 1.0 / float(vocab), device=device, dtype=torch.float32)
     hat_x0_ids = torch.zeros((batch, seq_len), device=device, dtype=torch.long)
-
+    bernoulli_scheduler = "loglinear"
     views_buffer = _init_views_buffer(
         x_t,
         T,
@@ -144,19 +157,36 @@ def sample_sequences(
         bernoulli_scheduler=bernoulli_scheduler,
         generator=generator,
     )
-
+    print(bernoulli_scheduler,"bernoulli_scheduler")
+    threshold = 8
+    print(threshold,"threshold")
+    print(use_cfg,"use_cfg")
     for i in range(1, num_steps + 1):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(num_steps), device=device, dtype=torch.float32)
         t_start = num_steps - i
 
+        if history_mode == "uniform":
+            # True no-history: reset all slots to 1/C at every step so the model
+            # only ever sees the current x_t and never accumulates past states.
+            views_buffer.fill_(1.0 / float(vocab))
         views_buffer[:, t_start] = x_t
-        logits, _pi, _h, _lb, seq_in = model(
-            views_buffer, t_start, labels=labels, t_cond=float(t[0, 0].item())
-        )
+        if use_cfg:
+            logits_c, _pi, _h, _lb, seq_in = model(
+                views_buffer, t_start, labels=labels, t_cond=float(t[0, 0].item())
+            )
+            logits_u, _, _, _, _ = model(
+                views_buffer, t_start, labels=null_lab, t_cond=float(t[0, 0].item())
+            )
+            logits = (1.0 + guidance_scale) * logits_c - guidance_scale * logits_u
+            logits = logits - torch.logsumexp(logits, dim=-1, keepdim=True)
+        else:
+            logits, _pi, _h, _lb, seq_in = model(
+                views_buffer, t_start, labels=labels, t_cond=float(t[0, 0].item())
+            )
 
         support_mask = (seq_in > 0) if seq_in is not None else (x_t > 0)
-        support_mask = (seq_in >0) | (x_t > 0)
-        #support_mask = x_t > 0
+        support_mask = (seq_in >0) 
+        #support_mask = (x_t > 0)
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
         neg_inf = torch.finfo(logits.dtype).min
@@ -172,26 +202,33 @@ def sample_sequences(
             model_prob = model_prob / model_prob.sum(dim=-1, keepdim=True).clamp(min=1e-8)
 
         hat_x0_ids = model_prob.argmax(dim=-1).clamp(max=vocab - 1)
+        one_hot = F.one_hot(hat_x0_ids, num_classes=vocab).to(dtype=torch.bool)
 
         t3 = t.unsqueeze(-1)
-        nominator = torch.clamp(_expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0, min=1e-1)
-        denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-1)
+        nominator = _expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0
+        denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-8)
         weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
+        one_hot_f = one_hot.to(dtype=weight.dtype)
         predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
-
+        #print(predicted, i,one_hot_f,weight,"predicted")
         # SLM's reverse step keeps only channels that were active in the input
         # simplex. The routed CNN mixes the current view with history, so the
         # effective "input simplex" is ``seq_in``, not the raw ``x_t``. Fall
         # back to ``x_t > 0`` when the backbone doesn't expose ``seq_in``
         # (DiT, or any model returning None).
         eps = 1e-4
-        one_hot = F.one_hot(hat_x0_ids, num_classes=vocab).to(dtype=torch.bool)
-        support_mask = (x_t > 0) | one_hot
-        #print((x_t > 0).sum(), one_hot.sum())
-        #print(support_mask.shape, support_mask.sum(),x_t.sum(), one_hot.sum())
-        #if (x_t > 0).sum() != support_mask.sum():
-        #    print((x_t > 0).sum(), support_mask.sum())
-        sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
+        
+        if corruption_mode == "independent":
+            support_mask = (x_t > 0)
+            if i > threshold*num_steps // 10 :
+                #print(i,"i")
+                sample_pred = _sample_bernoulli(predicted, generator=generator)
+            else:
+                sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
+            #print(sample_pred, i,"independent")
+        else:
+            support_mask = (x_t > 0)
+            sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
         #print(support_mask.shape, support_mask.sum(),x_t, t_start)
         sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
         fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
@@ -207,10 +244,22 @@ def sample_sequences(
         bernoulli_scheduler=bernoulli_scheduler,
         generator=generator,
     )
+    if history_mode == "uniform":
+        views_buffer.fill_(1.0 / float(vocab))
     views_buffer[:, 0] = x_t
-    logits_last, _pi, _h, _lb, _seq_in = model(
-        views_buffer, 0, labels=labels, t_cond=float(t_last[0, 0].item())
-    )
+    if use_cfg:
+        logits_c, _pi, _h, _lb, _seq_in = model(
+            views_buffer, 0, labels=labels, t_cond=float(t_last[0, 0].item())
+        )
+        logits_u, _, _, _, _ = model(
+            views_buffer, 0, labels=null_lab, t_cond=float(t_last[0, 0].item())
+        )
+        logits_last = (1.0 + guidance_scale) * logits_c - guidance_scale * logits_u
+        logits_last = logits_last - torch.logsumexp(logits_last, dim=-1, keepdim=True)
+    else:
+        logits_last, _pi, _h, _lb, _seq_in = model(
+            views_buffer, 0, labels=labels, t_cond=float(t_last[0, 0].item())
+        )
     return logits_last.argmax(dim=-1).clamp(max=3)
 
 
@@ -254,6 +303,19 @@ def main() -> None:
         help="SLM-style Bernoulli scheduler for routed new_diff sampling.",
     )
     p.add_argument(
+        "--corruption_mode",
+        type=str,
+        default=None,
+        choices=("trajectory", "independent"),
+        help=(
+            "Forward-corruption mode the model was trained with. Defaults to the value "
+            "stored in the checkpoint (cfg['corruption_mode']); pass explicitly to override. "
+            "'trajectory' (Markovian, monotone: once a class is dropped it stays dropped) "
+            "keeps the support-mask constraint in reverse sampling. 'independent' "
+            "(non-Markovian) drops the constraint so dropped classes can re-activate."
+        ),
+    )
+    p.add_argument(
         "--history_mode",
         type=str,
         default="trajectory",
@@ -279,6 +341,11 @@ def main() -> None:
     max_len = int(cfg.get("max_len", 500))
     seq_len = min(args.seq_len, max_len)
     num_classes = int(cfg.get("num_classes", 0))
+    if args.corruption_mode is None:
+        args.corruption_mode = str(cfg.get("corruption_mode", "trajectory"))
+        print(f"Using corruption_mode={args.corruption_mode} (from checkpoint)")
+    else:
+        print(f"Using corruption_mode={args.corruption_mode} (from CLI)")
 
     alphas_sample = ckpt.get("alphas_sample")
     if alphas_sample is None:
@@ -345,6 +412,7 @@ def main() -> None:
         bernoulli_scheduler=args.bernoulli_scheduler,
         generator=gen,
         history_mode=args.history_mode,
+        corruption_mode=args.corruption_mode,
     )
     lines = ids_to_strings(x.cpu())
     out_path = Path(args.out)

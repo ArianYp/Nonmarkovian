@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 452, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 262, in main
+    ckpt = torch.load(ckpt_path, map_location=device)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 997, in load
+    with _open_file_like(f, 'rb') as opened_file:
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 444, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 425, in __init__
+    super().__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: 'lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260507_074034-w6qnn3e7/files/simple_cnn.best.pt'

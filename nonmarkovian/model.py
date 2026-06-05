@@ -184,6 +184,7 @@ class RoutedDenoiserCNN(nn.Module):
         else:
             raise ValueError("x_views must be 4-channel")
         taus_cand = torch.arange(t_start + 1, T, device=device, dtype=torch.long)
+        #print(z_t.shape, z_cand.shape, taus_cand.shape)
         return z_t, z_cand, taus_cand
 
     def _compatibility_scores_full_sequence(
@@ -231,18 +232,19 @@ class RoutedDenoiserCNN(nn.Module):
 
     def _router_forward(self, e: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         tau = max(self.router_tau, 1e-6)
-        #print(tau)
-        #print(self.router_tau)
-        
-        #print("e", e)
-        #e_masked = _mask_to_topk_logits(e, self.router_k)
-        #print(e_masked)
-        #tau=0.001
-        pi_soft = torch.softmax(e / tau, dim=-1)
+        # Restrict the routing competition to the top-k candidate states per row:
+        # everything outside the top-k is set to -inf so the (Gumbel-)softmax only
+        # distributes mass over those k. This decouples *sparsity* from tau — we get
+        # a sparse mix from the top-k cutoff, so tau can stay reasonably large
+        # (stable gradients) instead of being driven to ~0 to fake a hard pick.
+        # When router_k >= num_candidates (or k <= 0) this is a no-op → full softmax.
+        #e_route = _mask_to_topk_logits(e, self.router_k)
+        e_route = e
+        pi_soft = torch.softmax(e_route / tau, dim=-1)
         if self.training:
-            pi = F.gumbel_softmax(e, tau=tau, dim=-1, hard=False)
+            pi = F.gumbel_softmax(e_route, tau=tau, dim=-1, hard=False)
         else:
-            pi = F.one_hot(e.argmax(dim=-1), num_classes=e.shape[-1])
+            pi = pi_soft
         '''
         if self.training:
             self._router_log_step += 1
@@ -288,6 +290,7 @@ class RoutedDenoiserCNN(nn.Module):
         if not (0 <= t_start < T):
             raise ValueError("t_start out of range")
         t_start_state = int(t_start) if t_start_abs is None else int(t_start_abs)
+        
         z_t, z_cand, taus_cand = self._embed_current_and_candidates(x_views, t_start)
 
         # Absolute history-state features from the same ``cnn.time_embedder`` used
@@ -317,10 +320,13 @@ class RoutedDenoiserCNN(nn.Module):
             pi_hat, pi_soft, _ = self._router_forward(e)
             loss_bal = self._load_balance_loss(e, pi_soft) if self.training else e.new_tensor(0.0)
             pi_w = pi_hat.view(B, -1, 1, 1)
+
             ctx_mix = (z_cand * pi_w).sum(dim=1)
+            #print(ctx_mix.shape, ctx_mix[0], z_cand[0], pi_w[0])
             #pi_l2 = pi_hat.pow(2).sum(dim=-1, keepdim=True).clamp(min=1e-8).sqrt().view(B, 1, 1)
             #ctx_mix = ctx_mix / pi_l2
             ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
+
             ctx = z_t + ctx_mix
             pi = pi_hat
             #print(self.router_tau, self.router_k)

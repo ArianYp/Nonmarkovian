@@ -243,6 +243,18 @@ def main() -> None:
         action="store_true",
         help="Allow partial checkpoint loads (default is strict=True).",
     )
+    p.add_argument(
+        "--guidance_scale",
+        type=float,
+        default=0.0,
+        help=(
+            "Classifier-free guidance scale w applied at sampling. "
+            "logits_guided = (1+w)*logits_cond - w*logits_uncond. "
+            "0 = pure conditional (uses real labels). -1 = pure unconditional. "
+            "Typical CFG range 1-3. Requires the checkpoint to have been trained "
+            "WITHOUT --no_labels (so the conditional embedding rows are trained)."
+        ),
+    )
     cli = p.parse_args()
 
     device = resolve_device_arg(cli.device)
@@ -297,6 +309,7 @@ def main() -> None:
         overrides["fbcnn_stacks"] = int(cli.fbcnn_stacks)
     if cli.seed >= 0:
         overrides["seed"] = int(cli.seed)
+    overrides["guidance_scale"] = float(cli.guidance_scale)
     args = _build_args_namespace(cfg, overrides)
 
     # --- model ---
@@ -370,6 +383,7 @@ def main() -> None:
         f"num_timesteps={getattr(args, 'num_timesteps', None)}  "
         f"num_timesteps_sample={args.num_timesteps_sample}  "
         f"history_mode={getattr(args, 'history_mode', 'n/a') if trainer == 'routed_discrete' else 'n/a'}  "
+        f"guidance_scale={float(args.guidance_scale)}  "
         f"fbcnn={'yes' if fbcnn is not None else 'no'}"
     )
 
@@ -408,7 +422,7 @@ def main() -> None:
                     fbcnn=fbcnn,
                 )
                 print(f"[eval] {tag}: {float(fbd):.4f}  (n_samples={n_fbd})")
-
+                
                 if cli.fbd_no_history:
                     # Second pass: uniform history — all non-current slots set to 1/C.
                     # Comparable to SLM/simple model (no history information).

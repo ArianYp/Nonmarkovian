@@ -45,6 +45,7 @@ def sample_sequences_simple(
     *,
     num_timesteps_train: int | None = None,
     labels: torch.Tensor | None = None,
+    guidance_scale: float = 0.0,
     bernoulli_scheduler: str = "loglinear",
     generator: torch.Generator | None = None,
 ) -> torch.Tensor:
@@ -54,9 +55,31 @@ def sample_sequences_simple(
     vocab = 4
     x_t = torch.full((batch, seq_len, vocab), 1.0 / float(vocab), device=device, dtype=torch.float32)
 
+    use_cfg = float(guidance_scale) != 0.0 and labels is not None
+    null_lab: torch.Tensor | None = None
+    if use_cfg:
+        num_cls_for_null = getattr(model, "num_labels", None)
+        if num_cls_for_null is not None and int(num_cls_for_null) > 0:
+            null_lab = torch.full_like(labels, int(num_cls_for_null))
+        else:
+            null_lab = None  # DiT backbone uses None as the null path
+
     for i in range(1, num_steps + 1):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(num_steps), device=device, dtype=torch.float32)
-        logits, _ = model(x_t, t.squeeze(-1), labels=labels)
+        if use_cfg:
+            logits_c, _ = model(x_t, t.squeeze(-1), labels=labels)
+            logits_u, _ = model(x_t, t.squeeze(-1), labels=null_lab)
+            logits = (1.0 + guidance_scale) * logits_c - guidance_scale * logits_u
+            logits = logits - torch.logsumexp(logits, dim=-1, keepdim=True)
+        else:
+            logits, _ = model(x_t, t.squeeze(-1), labels=labels)
+
+        support_mask = x_t > 0
+        has_any = support_mask.any(dim=-1, keepdim=True)
+        support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
+        neg_inf = torch.finfo(logits.dtype).min
+        logits = logits.masked_fill(~support_mask, neg_inf)
+
         model_prob = F.softmax(logits, dim=-1)
         if not torch.allclose(
             model_prob.sum(dim=-1),
@@ -66,8 +89,8 @@ def sample_sequences_simple(
             model_prob = model_prob / model_prob.sum(dim=-1, keepdim=True).clamp(min=1e-8)
 
         t3 = t.unsqueeze(-1)
-        nominator = torch.clamp(_expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0, min=1e-1)
-        denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-1)
+        nominator = _expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0
+        denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-8)
         weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
         predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
 
@@ -79,7 +102,13 @@ def sample_sequences_simple(
         x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
 
     t_last = torch.full((batch, 1), 1.0 / float(num_steps), device=device, dtype=torch.float32)
-    logits_last, _ = model(x_t, t_last.squeeze(-1), labels=labels)
+    if use_cfg:
+        logits_c, _ = model(x_t, t_last.squeeze(-1), labels=labels)
+        logits_u, _ = model(x_t, t_last.squeeze(-1), labels=null_lab)
+        logits_last = (1.0 + guidance_scale) * logits_c - guidance_scale * logits_u
+        logits_last = logits_last - torch.logsumexp(logits_last, dim=-1, keepdim=True)
+    else:
+        logits_last, _ = model(x_t, t_last.squeeze(-1), labels=labels)
     return logits_last.argmax(dim=-1).clamp(max=3)
 
 
