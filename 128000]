@@ -2,528 +2,1138 @@ router_tau
 
 
 
- 0.01 5
+ 0.05 2
 rk 1
-router_out_channels 512
-router_tau 
-
-
-
-router_tau 
-
-
-
- 0.01 5 
-rk0.01  1
-5router_out_channels 
-512
-rk 1
-router_out_channels 512
-router_tau 
-
-
-
- 0.01 5
-rk 1
-router_out_channels 512
-farm-gpu0505:976555:976555 [0] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976555:976555 [0] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976555:976555 [0] NCCL INFO Bootstrap : Using bond0:10.160.67.14<0>
-farm-gpu0505:976555:976555 [0] NCCL INFO NET/Plugin : dlerror=libnccl-net.so: cannot open shared object file: No such file or directory No plugin found (libnccl-net.so), using internal implementation
-farm-gpu0505:976555:976555 [0] NCCL INFO cudaDriverVersion 12040
-NCCL version 2.20.5+cuda12.4
-farm-gpu0505:976557:976557 [2] NCCL INFO cudaDriverVersion 12040
-farm-gpu0505:976557:976557 [2] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976557:976557 [2] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976557:976557 [2] NCCL INFO Bootstrap : Using bond0:10.160.67.14<0>
-farm-gpu0505:976557:976557 [2] NCCL INFO NET/Plugin : dlerror=libnccl-net.so: cannot open shared object file: No such file or directory No plugin found (libnccl-net.so), using internal implementation
-farm-gpu0505:976556:976556 [1] NCCL INFO cudaDriverVersion 12040
-farm-gpu0505:976556:976556 [1] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976556:976556 [1] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976556:976556 [1] NCCL INFO Bootstrap : Using bond0:10.160.67.14<0>
-farm-gpu0505:976556:976556 [1] NCCL INFO NET/Plugin : dlerror=libnccl-net.so: cannot open shared object file: No such file or directory No plugin found (libnccl-net.so), using internal implementation
-farm-gpu0505:976558:976558 [3] NCCL INFO cudaDriverVersion 12040
-farm-gpu0505:976558:976558 [3] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976558:976558 [3] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976558:976558 [3] NCCL INFO Bootstrap : Using bond0:10.160.67.14<0>
-farm-gpu0505:976558:976558 [3] NCCL INFO NET/Plugin : dlerror=libnccl-net.so: cannot open shared object file: No such file or directory No plugin found (libnccl-net.so), using internal implementation
-farm-gpu0505:976555:976633 [0] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
-farm-gpu0505:976555:976633 [0] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976555:976633 [0] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976555:976633 [0] NCCL INFO NCCL_IB_HCA set to ^mlx5_bond
-farm-gpu0505:976557:976635 [2] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
-farm-gpu0505:976557:976635 [2] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976557:976635 [2] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976557:976635 [2] NCCL INFO NCCL_IB_HCA set to ^mlx5_bond
-farm-gpu0505:976558:976637 [3] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
-farm-gpu0505:976558:976637 [3] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976558:976637 [3] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976558:976637 [3] NCCL INFO NCCL_IB_HCA set to ^mlx5_bond
-farm-gpu0505:976555:976633 [0] NCCL INFO NET/IB : Using [0]mlx5_0:1/IB [1]mlx5_1:1/RoCE [2]mlx5_2:1/IB [3]mlx5_3:1/IB [4]mlx5_4:1/IB [5]mlx5_5:1/IB [6]mlx5_6:1/RoCE [7]mlx5_7:1/IB [8]mlx5_8:1/IB [9]mlx5_9:1/IB [RO]; OOB bond0:10.160.67.14<0>
-farm-gpu0505:976555:976633 [0] NCCL INFO Using non-device net plugin version 0
-farm-gpu0505:976555:976633 [0] NCCL INFO Using network IB
-farm-gpu0505:976558:976637 [3] NCCL INFO NET/IB : Using [0]mlx5_0:1/IB [1]mlx5_1:1/RoCE [2]mlx5_2:1/IB [3]mlx5_3:1/IB [4]mlx5_4:1/IB [5]mlx5_5:1/IB [6]mlx5_6:1/RoCE [7]mlx5_7:1/IB [8]mlx5_8:1/IB [9]mlx5_9:1/IB [RO]; OOB bond0:10.160.67.14<0>
-farm-gpu0505:976558:976637 [3] NCCL INFO Using non-device net plugin version 0
-farm-gpu0505:976558:976637 [3] NCCL INFO Using network IB
-farm-gpu0505:976556:976636 [1] NCCL INFO NCCL_IB_DISABLE set by environment to 0.
-farm-gpu0505:976556:976636 [1] NCCL INFO NCCL_SOCKET_FAMILY set by environment to AF_INET
-farm-gpu0505:976556:976636 [1] NCCL INFO NCCL_SOCKET_IFNAME set by environment to bond0
-farm-gpu0505:976556:976636 [1] NCCL INFO NCCL_IB_HCA set to ^mlx5_bond
-farm-gpu0505:976557:976635 [2] NCCL INFO NET/IB : Using [0]mlx5_0:1/IB [1]mlx5_1:1/RoCE [2]mlx5_2:1/IB [3]mlx5_3:1/IB [4]mlx5_4:1/IB [5]mlx5_5:1/IB [6]mlx5_6:1/RoCE [7]mlx5_7:1/IB [8]mlx5_8:1/IB [9]mlx5_9:1/IB [RO]; OOB bond0:10.160.67.14<0>
-farm-gpu0505:976557:976635 [2] NCCL INFO Using non-device net plugin version 0
-farm-gpu0505:976557:976635 [2] NCCL INFO Using network IB
-farm-gpu0505:976556:976636 [1] NCCL INFO NET/IB : Using [0]mlx5_0:1/IB [1]mlx5_1:1/RoCE [2]mlx5_2:1/IB [3]mlx5_3:1/IB [4]mlx5_4:1/IB [5]mlx5_5:1/IB [6]mlx5_6:1/RoCE [7]mlx5_7:1/IB [8]mlx5_8:1/IB [9]mlx5_9:1/IB [RO]; OOB bond0:10.160.67.14<0>
-farm-gpu0505:976556:976636 [1] NCCL INFO Using non-device net plugin version 0
-farm-gpu0505:976556:976636 [1] NCCL INFO Using network IB
-farm-gpu0505:976557:976635 [2] NCCL INFO comm 0x55ddd6bc7fb0 rank 2 nranks 4 cudaDev 2 nvmlDev 2 busId cb000 commId 0x23c202357f513078 - Init START
-farm-gpu0505:976555:976633 [0] NCCL INFO comm 0x55a8f4cff7f0 rank 0 nranks 4 cudaDev 0 nvmlDev 0 busId 3b000 commId 0x23c202357f513078 - Init START
-farm-gpu0505:976558:976637 [3] NCCL INFO comm 0x55a5830540c0 rank 3 nranks 4 cudaDev 3 nvmlDev 3 busId db000 commId 0x23c202357f513078 - Init START
-farm-gpu0505:976556:976636 [1] NCCL INFO comm 0x564b1e2ac940 rank 1 nranks 4 cudaDev 1 nvmlDev 1 busId bb000 commId 0x23c202357f513078 - Init START
-farm-gpu0505:976556:976636 [1] NCCL INFO MNNVL busId 0xbb000 fabric UUID 0.0 cliqueId 0x0 state 3 healthMask 0x0
-farm-gpu0505:976555:976633 [0] NCCL INFO MNNVL busId 0x3b000 fabric UUID 0.0 cliqueId 0x0 state 3 healthMask 0x0
-farm-gpu0505:976558:976637 [3] NCCL INFO MNNVL busId 0xdb000 fabric UUID 0.0 cliqueId 0x0 state 3 healthMask 0x0
-farm-gpu0505:976557:976635 [2] NCCL INFO MNNVL busId 0xcb000 fabric UUID 0.0 cliqueId 0x0 state 3 healthMask 0x0
-farm-gpu0505:976556:976636 [1] NCCL INFO Setting affinity for GPU 1 to aaaaaaaa,aaaaaaaa,aaaaaaaa,aaaaaaaa
-farm-gpu0505:976556:976636 [1] NCCL INFO NCCL_NVLS_ENABLE set by environment to 0.
-farm-gpu0505:976558:976637 [3] NCCL INFO Setting affinity for GPU 3 to aaaaaaaa,aaaaaaaa,aaaaaaaa,aaaaaaaa
-farm-gpu0505:976558:976637 [3] NCCL INFO NCCL_NVLS_ENABLE set by environment to 0.
-farm-gpu0505:976557:976635 [2] NCCL INFO Setting affinity for GPU 2 to aaaaaaaa,aaaaaaaa,aaaaaaaa,aaaaaaaa
-farm-gpu0505:976557:976635 [2] NCCL INFO NCCL_NVLS_ENABLE set by environment to 0.
-farm-gpu0505:976555:976633 [0] NCCL INFO Setting affinity for GPU 0 to 55555555,55555555,55555555,55555555
-farm-gpu0505:976555:976633 [0] NCCL INFO NCCL_NVLS_ENABLE set by environment to 0.
-farm-gpu0505:976558:976637 [3] NCCL INFO comm 0x55a5830540c0 rank 3 nRanks 4 nNodes 1 localRanks 4 localRank 3 MNNVL 0
-farm-gpu0505:976555:976633 [0] NCCL INFO comm 0x55a8f4cff7f0 rank 0 nRanks 4 nNodes 1 localRanks 4 localRank 0 MNNVL 0
-farm-gpu0505:976557:976635 [2] NCCL INFO comm 0x55ddd6bc7fb0 rank 2 nRanks 4 nNodes 1 localRanks 4 localRank 2 MNNVL 0
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 00/24 :    0   1   2   3
-farm-gpu0505:976556:976636 [1] NCCL INFO comm 0x564b1e2ac940 rank 1 nRanks 4 nNodes 1 localRanks 4 localRank 1 MNNVL 0
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 01/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 02/24 :    0   1   2   3
-farm-gpu0505:976558:976637 [3] NCCL INFO Trees [0] -1/-1/-1->3->2 [1] -1/-1/-1->3->2 [2] -1/-1/-1->3->2 [3] -1/-1/-1->3->2 [4] -1/-1/-1->3->2 [5] -1/-1/-1->3->2 [6] -1/-1/-1->3->2 [7] -1/-1/-1->3->2 [8] -1/-1/-1->3->2 [9] -1/-1/-1->3->2 [10] -1/-1/-1->3->2 [11] -1/-1/-1->3->2 [12] -1/-1/-1->3->2 [13] -1/-1/-1->3->2 [14] -1/-1/-1->3->2 [15] -1/-1/-1->3->2 [16] -1/-1/-1->3->2 [17] -1/-1/-1->3->2 [18] -1/-1/-1->3->2 [19] -1/-1/-1->3->2 [20] -1/-1/-1->3->2 [21] -1/-1/-1->3->2 [22] -1/-1/-1->3->2 [23] -1/-1/-1->3->2
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 03/24 :    0   1   2   3
-farm-gpu0505:976558:976637 [3] NCCL INFO P2P Chunksize set to 524288
-farm-gpu0505:976557:976635 [2] NCCL INFO Trees [0] 3/-1/-1->2->1 [1] 3/-1/-1->2->1 [2] 3/-1/-1->2->1 [3] 3/-1/-1->2->1 [4] 3/-1/-1->2->1 [5] 3/-1/-1->2->1 [6] 3/-1/-1->2->1 [7] 3/-1/-1->2->1 [8] 3/-1/-1->2->1 [9] 3/-1/-1->2->1 [10] 3/-1/-1->2->1 [11] 3/-1/-1->2->1 [12] 3/-1/-1->2->1 [13] 3/-1/-1->2->1 [14] 3/-1/-1->2->1 [15] 3/-1/-1->2->1 [16] 3/-1/-1->2->1 [17] 3/-1/-1->2->1 [18] 3/-1/-1->2->1 [19] 3/-1/-1->2->1 [20] 3/-1/-1->2->1 [21] 3/-1/-1->2->1 [22] 3/-1/-1->2->1 [23] 3/-1/-1->2->1
-farm-gpu0505:976556:976636 [1] NCCL INFO Trees [0] 2/-1/-1->1->0 [1] 2/-1/-1->1->0 [2] 2/-1/-1->1->0 [3] 2/-1/-1->1->0 [4] 2/-1/-1->1->0 [5] 2/-1/-1->1->0 [6] 2/-1/-1->1->0 [7] 2/-1/-1->1->0 [8] 2/-1/-1->1->0 [9] 2/-1/-1->1->0 [10] 2/-1/-1->1->0 [11] 2/-1/-1->1->0 [12] 2/-1/-1->1->0 [13] 2/-1/-1->1->0 [14] 2/-1/-1->1->0 [15] 2/-1/-1->1->0 [16] 2/-1/-1->1->0 [17] 2/-1/-1->1->0 [18] 2/-1/-1->1->0 [19] 2/-1/-1->1->0 [20] 2/-1/-1->1->0 [21] 2/-1/-1->1->0 [22] 2/-1/-1->1->0 [23] 2/-1/-1->1->0
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 04/24 :    0   1   2   3
-farm-gpu0505:976557:976635 [2] NCCL INFO P2P Chunksize set to 524288
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 05/24 :    0   1   2   3
-farm-gpu0505:976556:976636 [1] NCCL INFO P2P Chunksize set to 524288
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 06/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 07/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 08/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 09/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 10/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 11/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 12/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 13/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 14/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 15/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 16/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 17/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 18/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 19/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 20/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 21/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 22/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 23/24 :    0   1   2   3
-farm-gpu0505:976555:976633 [0] NCCL INFO Trees [0] 1/-1/-1->0->-1 [1] 1/-1/-1->0->-1 [2] 1/-1/-1->0->-1 [3] 1/-1/-1->0->-1 [4] 1/-1/-1->0->-1 [5] 1/-1/-1->0->-1 [6] 1/-1/-1->0->-1 [7] 1/-1/-1->0->-1 [8] 1/-1/-1->0->-1 [9] 1/-1/-1->0->-1 [10] 1/-1/-1->0->-1 [11] 1/-1/-1->0->-1 [12] 1/-1/-1->0->-1 [13] 1/-1/-1->0->-1 [14] 1/-1/-1->0->-1 [15] 1/-1/-1->0->-1 [16] 1/-1/-1->0->-1 [17] 1/-1/-1->0->-1 [18] 1/-1/-1->0->-1 [19] 1/-1/-1->0->-1 [20] 1/-1/-1->0->-1 [21] 1/-1/-1->0->-1 [22] 1/-1/-1->0->-1 [23] 1/-1/-1->0->-1
-farm-gpu0505:976555:976633 [0] NCCL INFO P2P Chunksize set to 524288
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 00/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 01/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 02/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 03/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 00/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 04/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 01/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 05/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 06/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 02/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 00/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 07/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 03/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 04/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 05/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 06/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 07/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 08/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 09/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 10/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 11/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 08/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 01/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 12/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 09/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 02/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 13/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 10/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 03/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 14/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 11/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 04/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 15/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 12/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 05/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 13/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 16/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 06/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 14/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 17/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 07/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 15/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 08/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 18/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 09/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 19/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 10/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 20/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 16/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 11/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 21/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 17/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 12/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 22/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 18/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 13/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 23/0 : 1[1] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 19/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 14/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 00/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 20/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 15/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 01/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 21/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 16/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 02/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 17/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 03/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 18/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 04/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 22/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 19/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 05/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 23/0 : 2[2] -> 3[3] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 06/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 07/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 20/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 08/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 21/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 09/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 22/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 10/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976555:976633 [0] NCCL INFO Channel 23/0 : 0[0] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 11/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 12/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 13/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 14/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 15/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 16/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 17/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 18/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 19/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 20/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 21/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 22/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 23/0 : 3[3] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Connected all rings
-farm-gpu0505:976556:976636 [1] NCCL INFO Connected all rings
-farm-gpu0505:976558:976637 [3] NCCL INFO Connected all rings
-farm-gpu0505:976555:976633 [0] NCCL INFO Connected all rings
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 00/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 01/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 02/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 03/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 04/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 05/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 06/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 07/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 08/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 09/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 10/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 11/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 12/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 13/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 14/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 15/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 16/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 17/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 18/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 19/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 20/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 21/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 00/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 22/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 01/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Channel 23/0 : 3[3] -> 2[2] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 02/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 00/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 03/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 01/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 04/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 02/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 05/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 03/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 06/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 04/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 07/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 05/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 08/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 06/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 09/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 07/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 10/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 08/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 11/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 09/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 12/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 10/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 13/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 11/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 14/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 12/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 15/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 13/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 16/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 14/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 17/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 15/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 18/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 16/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 19/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 17/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 20/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 18/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 21/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 19/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 22/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 20/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976557:976635 [2] NCCL INFO Channel 23/0 : 2[2] -> 1[1] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 21/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 22/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976556:976636 [1] NCCL INFO Channel 23/0 : 1[1] -> 0[0] via P2P/CUMEM
-farm-gpu0505:976558:976637 [3] NCCL INFO Connected all trees
-farm-gpu0505:976558:976637 [3] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
-farm-gpu0505:976558:976637 [3] NCCL INFO 24 coll channels, 0 collnet channels, 0 nvls channels, 32 p2p channels, 32 p2p channels per peer
-farm-gpu0505:976555:976633 [0] NCCL INFO Connected all trees
-farm-gpu0505:976556:976636 [1] NCCL INFO Connected all trees
-farm-gpu0505:976557:976635 [2] NCCL INFO Connected all trees
-farm-gpu0505:976556:976636 [1] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
-farm-gpu0505:976556:976636 [1] NCCL INFO 24 coll channels, 0 collnet channels, 0 nvls channels, 32 p2p channels, 32 p2p channels per peer
-farm-gpu0505:976557:976635 [2] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
-farm-gpu0505:976557:976635 [2] NCCL INFO 24 coll channels, 0 collnet channels, 0 nvls channels, 32 p2p channels, 32 p2p channels per peer
-farm-gpu0505:976555:976633 [0] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
-farm-gpu0505:976555:976633 [0] NCCL INFO 24 coll channels, 0 collnet channels, 0 nvls channels, 32 p2p channels, 32 p2p channels per peer
-farm-gpu0505:976556:976636 [1] NCCL INFO comm 0x564b1e2ac940 rank 1 nranks 4 cudaDev 1 nvmlDev 1 busId bb000 commId 0x23c202357f513078 - Init COMPLETE
-farm-gpu0505:976557:976635 [2] NCCL INFO comm 0x55ddd6bc7fb0 rank 2 nranks 4 cudaDev 2 nvmlDev 2 busId cb000 commId 0x23c202357f513078 - Init COMPLETE
-farm-gpu0505:976558:976637 [3] NCCL INFO comm 0x55a5830540c0 rank 3 nranks 4 cudaDev 3 nvmlDev 3 busId db000 commId 0x23c202357f513078 - Init COMPLETE
-farm-gpu0505:976555:976633 [0] NCCL INFO comm 0x55a8f4cff7f0 rank 0 nranks 4 cudaDev 0 nvmlDev 0 busId 3b000 commId 0x23c202357f513078 - Init COMPLETE
-model parameters: total=3,670,724 (3.671M)  trainable=3,670,660 (3.671M)
-Distributed: world_size=4  per-GPU batch=32  global_batch=128
-[preview] Validation split: showing 4 of 8966 sequences
-  val[0] len=500  label=26
-      GAGTGTTACAGCTCTTAAGGCAGCGCGTCTGGATTTTTTGTTCCTCCCGGTGGGCTCGTGGTCTCGCTGGTTTCAGGAGTGAAGCTGCAGACCTTG... (500 bp total)
-  val[1] len=500  label=40
-      TCCCAGCTAAGGTGGGGTTGGTGGGATTTGGCTGGGGCCCTTGGAGGAGCCTGACCAGGAGGTGAGACAGGGCACCTGGAAGGAAGGAGGCGTTGG... (500 bp total)
-  val[2] len=500  label=8
-      CAGCACTGTGACCTTTAAACCCTGGGCTGGCCGGCAGTGTCACACCATCAAATGCTGTGAGGGAGATCCACCCCCACTCCACAGCTGGGGCCACAT... (500 bp total)
-  val[3] len=500  label=40
-      ACCAGCCTGACCCACATGGAGAAAGCCCGTCTCTACTAAAAATACAAAAAAAATTAGCCAGGCGTGGTGGCGCACGCCTGTAATCCCAGCTACTCG... (500 bp total)
-[preview] Uniform random DNA (same seed convention as FBD random baseline: base_seed+31337=31337), length=500
-  random[0] len=500
-      TTGCCTCTATTAGCAATAATTCGACGGTTGTGGAAGGTACATCGTCCTAAGCCTGATCTCAGTGTTGAAGGGTAGATCTGAACCCCAATGCCGAGC... (500 bp total)
-  random[1] len=500
-      CGTTAAAAGTATTCGGAGTATCTCCCCGACTCTCGATACACCCCCTACCTTTCTGTGTAGCCCGGTCAGGTAAACGACTGACAGTGGGATGTTTCT... (500 bp total)
-  random[2] len=500
-      CTCGTTTGTGTGAGCGTGTAATGTTACCACAACCAGTACACTCATTTGATTTTTAAGAGTATGCTCCTTATGTACGGTGAAACCTGGATGCGATCT... (500 bp total)
-  random[3] len=500
-      GCCTTTGGGCATATCTTCACTGTCCCTCGGTGAGCCTCAGCTCTATACACAGATCCTTATAATATGTGAGGACTGACTGAGTCCATTCGCCGGTTC... (500 bp total)
-Chance baseline (uniform 4-class logits, mean NLL = log 4, scale=1):  val/diff_loss ~ 1.3863  val/loss ~ 1.3863
-epoch 1/800  loss=0.8061
-  timing_ms (batch avg): sample_all_views=1.32  forward=6.54  loss=0.31  backward+step=18.07
-  val_loss=2.3842  val_loss_no_history=2.3897
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=2.3842)
-epoch 2/800  loss=0.6259
-  timing_ms (batch avg): sample_all_views=0.97  forward=5.67  loss=0.32  backward+step=17.52
-  val_loss=2.4619  val_loss_no_history=2.4897
-epoch 3/800  loss=0.6286
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.66  loss=0.31  backward+step=17.91
-  val_loss=2.7054  val_loss_no_history=2.7872
-epoch 4/800  loss=0.5948
-  timing_ms (batch avg): sample_all_views=0.97  forward=5.64  loss=0.32  backward+step=17.13
-  val_loss=2.2649  val_loss_no_history=2.3643
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=2.2649)
-epoch 5/800  loss=0.6112
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.62  loss=0.31  backward+step=17.73
-  val_loss=2.2290  val_loss_no_history=2.3807
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=2.2290)
-epoch 6/800  loss=0.5942
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.45  loss=0.27  backward+step=16.58
-  val_loss=2.0869  val_loss_no_history=2.2694
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=2.0869)
-epoch 7/800  loss=0.6093
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.85  loss=0.33  backward+step=17.57
-  val_loss=2.0850  val_loss_no_history=2.3291
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=2.0850)
-epoch 8/800  loss=0.6190
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.77  loss=0.33  backward+step=17.54
-  val_loss=1.9786  val_loss_no_history=2.2868
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.9786)
-epoch 9/800  loss=0.5993
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.71  loss=0.32  backward+step=17.38
-  val_loss=1.9894  val_loss_no_history=2.4189
-epoch 10/800  loss=0.6130
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.76  loss=0.33  backward+step=18.08
-  val_loss=1.8904  val_loss_no_history=2.3975
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.8904)
-epoch 11/800  loss=0.6061
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.71  loss=0.32  backward+step=18.12
-  val_loss=1.6762  val_loss_no_history=2.2123
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.6762)
-epoch 12/800  loss=0.5830
-  timing_ms (batch avg): sample_all_views=0.98  forward=5.82  loss=0.33  backward+step=18.02
-  val_loss=1.4635  val_loss_no_history=1.9795
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.4635)
-epoch 13/800  loss=0.6257
-  timing_ms (batch avg): sample_all_views=0.93  forward=5.75  loss=0.33  backward+step=17.82
-  val_loss=1.3398  val_loss_no_history=1.7999
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.3398)
-epoch 14/800  loss=0.6091
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.77  loss=0.33  backward+step=17.88
-  val_loss=1.2671  val_loss_no_history=1.6169
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.2671)
-epoch 15/800  loss=0.5853
-  timing_ms (batch avg): sample_all_views=0.97  forward=5.69  loss=0.32  backward+step=18.04
-  val_loss=1.2567  val_loss_no_history=1.5880
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.2567)
-epoch 16/800  loss=0.6295
-  timing_ms (batch avg): sample_all_views=0.93  forward=5.71  loss=0.32  backward+step=17.87
-  val_loss=1.2281  val_loss_no_history=1.4930
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.2281)
-epoch 17/800  loss=0.6255
-  timing_ms (batch avg): sample_all_views=0.93  forward=5.78  loss=0.32  backward+step=18.13
-  val_loss=1.2082  val_loss_no_history=1.4142
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.2082)
-epoch 18/800  loss=0.6018
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.92  loss=0.34  backward+step=18.34
-  val_loss=1.1538  val_loss_no_history=1.3438
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.1538)
-epoch 19/800  loss=0.5912
-  timing_ms (batch avg): sample_all_views=0.98  forward=6.15  loss=0.35  backward+step=17.32
-  val_loss=1.1004  val_loss_no_history=1.2217
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.1004)
-epoch 20/800  loss=0.6242
-  timing_ms (batch avg): sample_all_views=0.94  forward=6.03  loss=0.34  backward+step=17.53
-  val_loss=1.0849  val_loss_no_history=1.1735
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0849)
-epoch 21/800  loss=0.6058
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.86  loss=0.33  backward+step=17.55
-  val_loss=1.0729  val_loss_no_history=1.1695
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0729)
-epoch 22/800  loss=0.6079
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.77  loss=0.33  backward+step=17.54
-  val_loss=1.1234  val_loss_no_history=1.2003
-epoch 23/800  loss=0.6069
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.67  loss=0.32  backward+step=17.68
-  val_loss=1.1028  val_loss_no_history=1.1635
-epoch 24/800  loss=0.6000
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.66  loss=0.32  backward+step=17.81
-  val_loss=1.0924  val_loss_no_history=1.1448
-epoch 25/800  loss=0.6173
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.71  loss=0.32  backward+step=17.01
-  val_loss=1.1398  val_loss_no_history=1.1868
-epoch 26/800  loss=0.6391
-  timing_ms (batch avg): sample_all_views=0.92  forward=5.75  loss=0.32  backward+step=17.28
-  val_loss=1.0812  val_loss_no_history=1.1203
-epoch 27/800  loss=0.5870
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.82  loss=0.33  backward+step=17.47
-  val_loss=1.0894  val_loss_no_history=1.1172
-epoch 28/800  loss=0.6232
-  timing_ms (batch avg): sample_all_views=0.93  forward=5.87  loss=0.33  backward+step=17.48
-  val_loss=1.0643  val_loss_no_history=1.0915
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0643)
-epoch 29/800  loss=0.5976
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.74  loss=0.32  backward+step=17.70
-  val_loss=1.0448  val_loss_no_history=1.0710
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0448)
-epoch 30/800  loss=0.5971
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.75  loss=0.32  backward+step=17.76
-  val_loss=1.0808  val_loss_no_history=1.1031
-epoch 31/800  loss=0.5846
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.64  loss=0.32  backward+step=17.94
-  val_loss=1.0760  val_loss_no_history=1.0950
-epoch 32/800  loss=0.6230
-  timing_ms (batch avg): sample_all_views=0.93  forward=5.70  loss=0.32  backward+step=18.11
-  val_loss=1.0828  val_loss_no_history=1.1040
-epoch 33/800  loss=0.6193
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.82  loss=0.33  backward+step=17.28
-  val_loss=1.0768  val_loss_no_history=1.0944
-epoch 34/800  loss=0.6173
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.85  loss=0.33  backward+step=17.86
-  val_loss=1.1024  val_loss_no_history=1.1193
-epoch 35/800  loss=0.6053
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.64  loss=0.31  backward+step=17.30
-  val_loss=1.1290  val_loss_no_history=1.1450
-epoch 36/800  loss=0.5825
-  timing_ms (batch avg): sample_all_views=0.97  forward=5.83  loss=0.32  backward+step=17.67
-  val_loss=1.0405  val_loss_no_history=1.0555
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0405)
-epoch 37/800  loss=0.5869
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.67  loss=0.32  backward+step=17.37
-  val_loss=1.0785  val_loss_no_history=1.0933
-epoch 38/800  loss=0.5910
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.68  loss=0.32  backward+step=17.45
-  val_loss=1.1054  val_loss_no_history=1.1200
-epoch 39/800  loss=0.6385
-  timing_ms (batch avg): sample_all_views=0.91  forward=5.64  loss=0.32  backward+step=17.08
-  val_loss=1.1160  val_loss_no_history=1.1295
-epoch 40/800  loss=0.6473
-  timing_ms (batch avg): sample_all_views=0.90  forward=5.71  loss=0.33  backward+step=17.69
-  val_loss=1.0216  val_loss_no_history=1.0365
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0216)
-epoch 41/800  loss=0.5956
-  timing_ms (batch avg): sample_all_views=0.96  forward=5.71  loss=0.33  backward+step=17.85
-  val_loss=1.1732  val_loss_no_history=1.1860
-epoch 42/800  loss=0.6114
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.75  loss=0.33  backward+step=18.26
-  val_loss=1.0014  val_loss_no_history=1.0165
-  best checkpoint updated: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260506_020402-6dftkia7/files/routed.best.pt (val/loss=1.0014)
-epoch 43/800  loss=0.6132
-  timing_ms (batch avg): sample_all_views=0.93  forward=5.72  loss=0.33  backward+step=17.60
-  val_loss=1.1152  val_loss_no_history=1.1284
-epoch 44/800  loss=0.6096
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.71  loss=0.33  backward+step=17.35
-  val_loss=1.1164  val_loss_no_history=1.1290
-epoch 45/800  loss=0.6044
-  timing_ms (batch avg): sample_all_views=0.95  forward=5.71  loss=0.33  backward+step=17.42
-  val_loss=1.1032  val_loss_no_history=1.1161
-epoch 46/800  loss=0.6171
-  timing_ms (batch avg): sample_all_views=0.94  forward=5.76  loss=0.33  backward+step=17.76
-  val_loss=1.0569  val_loss_no_history=1.0691
-
-farm-gpu0505:976556:980401 [0] init.cc:1909 NCCL WARN Cuda failure 'CUDA-capable device(s) is/are busy or unavailable'
-
-farm-gpu0505:976556:980401 [0] init.cc:2030 NCCL WARN commReclaim: comm 0x564b1e2ac940 (rank = 1) in abort, error 1
-farm-gpu0505:976556:976682 [1] NCCL INFO [Service thread] Connection closed by localRank 1
-
-farm-gpu0505:976557:980400 [0] init.cc:1909 NCCL WARN Cuda failure 'CUDA-capable device(s) is/are busy or unavailable'
-
-farm-gpu0505:976557:980400 [0] init.cc:2030 NCCL WARN commReclaim: comm 0x55ddd6bc7fb0 (rank = 2) in abort, error 1
-farm-gpu0505:976557:976680 [2] NCCL INFO [Service thread] Connection closed by localRank 2
-
-farm-gpu0505:976558:980402 [0] init.cc:1909 NCCL WARN Cuda failure 'CUDA-capable device(s) is/are busy or unavailable'
-
-farm-gpu0505:976558:980402 [0] init.cc:2030 NCCL WARN commReclaim: comm 0x55a5830540c0 (rank = 3) in abort, error 1
-farm-gpu0505:976558:976686 [3] NCCL INFO [Service thread] Connection closed by localRank 3
-
-farm-gpu0505:976557:980400 [0] init.cc:1936 NCCL WARN Cuda failure 'CUDA-capable device(s) is/are busy or unavailable'
-
-farm-gpu0505:976557:980400 [0] init.cc:2065 NCCL WARN commReclaim: cleanup comm 0x55ddd6bc7fb0 rank 2 failed in destroy/abort, error 1
-farm-gpu0505:976557:980400 [0] NCCL INFO comm 0x55ddd6bc7fb0 rank 2 nranks 4 cudaDev 2 busId cb000 - Abort COMPLETE
-
-farm-gpu0505:976558:980402 [0] init.cc:1936 NCCL WARN Cuda failure 'CUDA-capable device(s) is/are busy or unavailable'
-
-farm-gpu0505:976558:980402 [0] init.cc:2065 NCCL WARN commReclaim: cleanup comm 0x55a5830540c0 rank 3 failed in destroy/abort, error 1
-farm-gpu0505:976558:980402 [0] NCCL INFO comm 0x55a5830540c0 rank 3 nranks 4 cudaDev 3 busId db000 - Abort COMPLETE
-
-farm-gpu0505:976556:980401 [0] init.cc:1936 NCCL WARN Cuda failure 'CUDA-capable device(s) is/are busy or unavailable'
-
-farm-gpu0505:976556:980401 [0] init.cc:2065 NCCL WARN commReclaim: cleanup comm 0x564b1e2ac940 rank 1 failed in destroy/abort, error 1
-farm-gpu0505:976556:980401 [0] NCCL INFO comm 0x564b1e2ac940 rank 1 nranks 4 cudaDev 1 busId bb000 - Abort COMPLETE
+router_out_channels 256
+[eval] checkpoint: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260703_073903-b9f4obq3/files/routed.best_fbd.pt  trainer=routed_discrete
+[eval] split=test  n=9012  batch_size=64  num_timesteps=1000  num_timesteps_sample=20  history_mode=trajectory  guidance_scale=0.2  fbcnn=yes
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+[eval] fbd_fbcnn: 5.1792  (n_samples=9012)
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+independent corruption_mode
+loglinear bernoulli_scheduler
+4 threshold
+False use_cfg
+[eval] fbd_fbcnn_no_history: 38.9129  (n_samples=9012)

@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/eval_checkpoint.py", line 36, in <module>
+    from nonmarkovian.validation import (
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation.py", line 23, in <module>
+    from nonmarkovian.sample import ids_to_strings
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/sample.py", line 161
+    threshold = ۸
+                ^
+SyntaxError: invalid character '۸' (U+06F8)

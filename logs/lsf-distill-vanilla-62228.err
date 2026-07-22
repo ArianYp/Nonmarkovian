@@ -1,0 +1,179 @@
+W0701 10:18:21.863000 22382459876480 torch/distributed/run.py:757] 
+W0701 10:18:21.863000 22382459876480 torch/distributed/run.py:757] *****************************************
+W0701 10:18:21.863000 22382459876480 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0701 10:18:21.863000 22382459876480 torch/distributed/run.py:757] *****************************************
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run 7slekzwi
+wandb: Tracking run with wandb version 0.26.0
+wandb: Run data is saved locally in /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260701_101857-7slekzwi
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run mdlm_cnn_fb
+wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian
+wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian/runs/7slekzwi
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank3]:     return _run_code(code, main_globals, None,
+[rank3]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank3]:     exec(code, run_globals)
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 1019, in <module>
+[rank3]:     main()
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 555, in main
+[rank3]:     _train_loop(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 977, in _train_loop
+[rank3]:     print_epoch_diffusion_dna_samples_mdlm(
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+[rank3]:     return func(*args, **kwargs)
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation_mdlm.py", line 477, in print_epoch_diffusion_dna_samples_mdlm
+[rank3]:     print(f"[samples-mdlm] epoch {epoch + 1} - model generations (n={n}, seq_len={args.max_len}):")
+[rank3]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/console_capture.py", line 184, in write_with_callbacks
+[rank3]:     n = orig_write(s)
+[rank3]: OSError: [Errno 122] Disk quota exceeded
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank1]:     return _run_code(code, main_globals, None,
+[rank1]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank1]:     exec(code, run_globals)
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 1019, in <module>
+[rank1]:     main()
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 555, in main
+[rank1]:     _train_loop(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 977, in _train_loop
+[rank1]:     print_epoch_diffusion_dna_samples_mdlm(
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation_mdlm.py", line 483, in print_epoch_diffusion_dna_samples_mdlm
+[rank1]:     print(f"      {_trunc(s)}")
+[rank1]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/console_capture.py", line 184, in write_with_callbacks
+[rank1]:     n = orig_write(s)
+[rank1]: OSError: [Errno 122] Disk quota exceeded
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank2]:     return _run_code(code, main_globals, None,
+[rank2]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank2]:     exec(code, run_globals)
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 1019, in <module>
+[rank2]:     main()
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 555, in main
+[rank2]:     _train_loop(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 977, in _train_loop
+[rank2]:     print_epoch_diffusion_dna_samples_mdlm(
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+[rank2]:     return func(*args, **kwargs)
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation_mdlm.py", line 477, in print_epoch_diffusion_dna_samples_mdlm
+[rank2]:     print(f"[samples-mdlm] epoch {epoch + 1} - model generations (n={n}, seq_len={args.max_len}):")
+[rank2]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/console_capture.py", line 184, in write_with_callbacks
+[rank2]:     n = orig_write(s)
+[rank2]: OSError: [Errno 122] Disk quota exceeded
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:                            epoch ▁▁▁▁▁▂▂▂▂▂▂▃▃▃▃▄▄▄▄▄▄▄▄▄▅▆▆▆▆▆▇▇▇▇▇▇▇███
+wandb:           model/total_parameters ▁
+wandb: model/trainable_model_parameters ▁
+wandb:       model/trainable_parameters ▁
+wandb:                  train/batch_idx ▅▆▂▂█▂▅▃▅▂▆▁▄▆▇▃▄▂▁▅▃▇▂▄▂▇▅█▄▁▁▂▇▆▅▅▇▅▅▄
+wandb:                 train/batch_size ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:          train/batches_per_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                  train/diff_loss ▃█▇▆█▄▄▄▁██▄██▂█▃▃▃▃▅▅▂▁▃▃▃▁▆▄▁▅▇▃▄▅▁▃█▄
+wandb:             train/epoch_loss_avg ██▇▅▆▃▆▆▄▆▃▇▆▄▇▅▄▅▃▃▆▆▆▅▂▄▂▇▄▂▆▃▁▄▅▄▄▄▅▆
+wandb: train/epoch_time_ms_backward_avg ▁▁▁▁▁▁▂▂▂▅█▁▂▂▁▂▂▁▁▁▂▁▁▁▂▁▁▁▁▁▁▂▂▁▁▁▁▁▂▁
+wandb:                              +37 ...
+wandb: 
+wandb: Run summary:
+wandb:                 checkpoint_best_fbd 39.06556
+wandb:            checkpoint_best_fbd_path /lustre/scratch126/c...
+wandb:                checkpoint_best_path /lustre/scratch126/c...
+wandb:            checkpoint_best_val_loss 0.05926
+wandb: checkpoint_best_val_loss_no_history 0.16886
+wandb:                    cuda_device_name NVIDIA H100 80GB HBM...
+wandb:                         cuda_usable True
+wandb:                        dataset_size 83726
+wandb:                              device cuda:0
+wandb:                         distributed True
+wandb:                                 +52 ...
+wandb: 
+wandb: 🚀 View run mdlm_cnn_fb at: https://wandb.ai/shariflab/nonmarkovian/runs/7slekzwi
+wandb: ⭐️ View project at: https://wandb.ai/shariflab/nonmarkovian
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260701_101857-7slekzwi/logs
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 1019, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 555, in main
+    _train_loop(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 977, in _train_loop
+    print_epoch_diffusion_dna_samples_mdlm(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation_mdlm.py", line 477, in print_epoch_diffusion_dna_samples_mdlm
+    print(f"[samples-mdlm] epoch {epoch + 1} - model generations (n={n}, seq_len={args.max_len}):")
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/console_capture.py", line 184, in write_with_callbacks
+    n = orig_write(s)
+OSError: [Errno 122] Disk quota exceeded
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank0]:     return _run_code(code, main_globals, None,
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank0]:     exec(code, run_globals)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 1019, in <module>
+[rank0]:     main()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 555, in main
+[rank0]:     _train_loop(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/train_mdlm.py", line 977, in _train_loop
+[rank0]:     print_epoch_diffusion_dna_samples_mdlm(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/validation_mdlm.py", line 477, in print_epoch_diffusion_dna_samples_mdlm
+[rank0]:     print(f"[samples-mdlm] epoch {epoch + 1} - model generations (n={n}, seq_len={args.max_len}):")
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/wandb/sdk/lib/console_capture.py", line 184, in write_with_callbacks
+[rank0]:     n = orig_write(s)
+[rank0]: OSError: [Errno 122] Disk quota exceeded
+W0701 12:29:39.146000 22382459876480 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 2583818 closing signal SIGTERM
+E0701 12:29:39.612000 22382459876480 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 1) local_rank: 1 (pid: 2583819) of binary: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/python
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+nonmarkovian.train_mdlm FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-07-01_12:29:39
+  host      : farm-gpu0303.internal.sanger.ac.uk
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 2583820)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-07-01_12:29:39
+  host      : farm-gpu0303.internal.sanger.ac.uk
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 2583821)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-07-01_12:29:39
+  host      : farm-gpu0303.internal.sanger.ac.uk
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 2583819)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

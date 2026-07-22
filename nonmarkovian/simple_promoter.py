@@ -40,6 +40,7 @@ from nonmarkovian.nonmark_promoter import (
     _EMA,
     _HAS_PROMOTER_DEPS,
     _PROMOTER_IMPORT_ERR,
+    _resolve_run_dir,
 )
 from nonmarkovian.forward import get_xt_bernoulli
 from nonmarkovian.distributed_utils import (
@@ -272,15 +273,6 @@ def _parse_args() -> argparse.Namespace:
 # Training loop
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _resolve_save_path(requested: str | Path, use_wandb: bool) -> Path:
-    requested = Path(requested)
-    if use_wandb and wandb is not None and getattr(wandb, "run", None) is not None:
-        run_dir = getattr(wandb.run, "dir", None)
-        if run_dir:
-            return Path(run_dir) / requested.name
-    return requested
-
-
 def _train_loop(
     args:          argparse.Namespace,
     device:        torch.device,
@@ -318,6 +310,22 @@ def _train_loop(
     global_step = 0
     T = int(args.T)
     scheduler = args.bernoulli_scheduler
+
+    # Resolve the per-run checkpoint directory ONCE (rank 0), so best/best_mse/final
+    # all land together and repeat runs never overwrite each other.
+    base_name = final_path = best_path_target = best_mse_path_target = None
+    if rank == 0:
+        run_dir   = _resolve_run_dir(args.save, use_wandb)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        base_name = Path(args.save).name                       # e.g. simple_promoter.pt
+        stem, suffix = Path(base_name).stem, Path(base_name).suffix
+        final_path           = run_dir / base_name
+        best_path_target     = run_dir / f"{stem}.best{suffix}"
+        best_mse_path_target = run_dir / f"{stem}.best_mse{suffix}"
+        print(f"checkpoints -> {run_dir}/  "
+              f"(final={base_name}, best={stem}.best{suffix}, best_mse={stem}.best_mse{suffix})")
+        if use_wandb:
+            wandb.summary["checkpoint_dir"] = str(run_dir.resolve())
 
     for epoch in range(args.epochs):
         if train_sampler is not None:
@@ -410,8 +418,7 @@ def _train_loop(
                 cur = float(vmetrics["val/loss"])
                 if cur < best_val:
                     best_val = cur
-                    save_path = _resolve_save_path(args.save, use_wandb)
-                    best_path = save_path.with_name(f"{save_path.stem}.best{save_path.suffix}")
+                    best_path = best_path_target
                     best_path.parent.mkdir(parents=True, exist_ok=True)
                     torch.save({
                         "model":            m.state_dict(),
@@ -431,8 +438,7 @@ def _train_loop(
                 cur_mse = vmetrics.get("val/sp_mse")
                 if in_mse_window and cur_mse is not None and float(cur_mse) < best_mse:
                     best_mse = float(cur_mse)
-                    save_path = _resolve_save_path(args.save, use_wandb)
-                    best_mse_path = save_path.with_name(f"{save_path.stem}.best_mse{save_path.suffix}")
+                    best_mse_path = best_mse_path_target
                     best_mse_path.parent.mkdir(parents=True, exist_ok=True)
                     torch.save({
                         "model":            m.state_dict(),
@@ -453,10 +459,9 @@ def _train_loop(
             barrier()
 
     if rank == 0:
-        save_path = _resolve_save_path(args.save, use_wandb)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save({"model": unwrap_ddp(model).state_dict(), "args": vars(args)}, save_path)
-        print(f"Saved final checkpoint: {save_path}")
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"model": unwrap_ddp(model).state_dict(), "args": vars(args)}, final_path)
+        print(f"Saved final checkpoint: {final_path}")
         if best_path is not None:
             print(f"Best checkpoint:  {best_path}  (val/loss={best_val:.4f})")
         if best_mse_path is not None:

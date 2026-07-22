@@ -1,0 +1,14 @@
+usage: eval_protein.py [-h] (--checkpoint CHECKPOINT | --sequences SEQUENCES)
+                       [--model {auto,routed,simple}] [--num_seqs NUM_SEQS]
+                       [--seq_len SEQ_LEN] [--batch BATCH]
+                       [--num_steps NUM_STEPS]
+                       [--history_mode {trajectory,uniform}]
+                       [--corruption_mode {independent,trajectory}]
+                       [--release_threshold RELEASE_THRESHOLD]
+                       [--device DEVICE] [--seed SEED]
+                       [--esm2_model ESM2_MODEL] [--ppl_batch PPL_BATCH]
+                       [--no_fitness] [--esmfold] [--no_esmfold]
+                       [--esmfold_backend {auto,hf,fair-esm}]
+                       [--out_fasta OUT_FASTA] [--uniref UNIREF]
+                       [--reference_test REFERENCE_TEST]
+eval_protein.py: error: one of the arguments --checkpoint --sequences is required

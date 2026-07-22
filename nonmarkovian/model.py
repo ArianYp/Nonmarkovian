@@ -54,6 +54,7 @@ def _mask_to_topk_logits(e: torch.Tensor, k: int) -> torch.Tensor:
     return e.masked_fill(~keep, neg_inf)
 
 
+
 class _EncoderCallable:
     """Thin wrapper so ``model.encoder(x)`` works for FBD without nn.Module registration."""
 
@@ -121,7 +122,7 @@ class RoutedDenoiserCNN(nn.Module):
 
         cnn_num_cls = num_labels if num_labels is not None and num_labels > 0 else 1
         self.num_labels = num_labels
-        self.cnn = CNNModel(4, 81, num_cnn_stacks, classifier=False)
+        self.cnn = CNNModel(4,cnn_num_cls, num_cnn_stacks, classifier=False)
 
         cnn_hidden = int(self.cnn.hidden_dim)
         # Reuse the CNN's own ``time_embedder`` for absolute history-state
@@ -186,6 +187,19 @@ class RoutedDenoiserCNN(nn.Module):
         taus_cand = torch.arange(t_start + 1, T, device=device, dtype=torch.long)
         #print(z_t.shape, z_cand.shape, taus_cand.shape)
         return z_t, z_cand, taus_cand
+
+
+    def _scheduler_corruption(self, t_cond, num_classes: int = 4, scheduler: str = "loglinear"):
+        """Bernoulli corruption probability at t_cond, matching forward.py's
+        corrupt_sequence_bernoulli. 0 = final/clean state, 1 = start/fully-noised state."""
+        t = t_cond if torch.is_tensor(t_cond) else torch.tensor(float(t_cond))
+        if scheduler == "loglinear":
+            expect_nums = torch.exp(torch.log(torch.tensor(float(num_classes), device=t.device)) * t)
+        else:  # "linear"
+            expect_nums = float(num_classes) * t
+        expect_nums = torch.clamp(expect_nums, min=1.0)
+        corruption = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
+        return torch.clamp(corruption, 0.0, 1.0)
 
     def _compatibility_scores_full_sequence(
         self,
@@ -281,6 +295,7 @@ class RoutedDenoiserCNN(nn.Module):
         labels: torch.Tensor | None = None,
         t_cond: int | None = None,
         t_start_abs: int | None = None,
+        scheduler: str = "loglinear",
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor, torch.Tensor]:
         if x_views.ndim == 4:
             B, T, L, _ = x_views.shape
@@ -325,9 +340,21 @@ class RoutedDenoiserCNN(nn.Module):
             #print(ctx_mix.shape, ctx_mix[0], z_cand[0], pi_w[0])
             #pi_l2 = pi_hat.pow(2).sum(dim=-1, keepdim=True).clamp(min=1e-8).sqrt().view(B, 1, 1)
             #ctx_mix = ctx_mix / pi_l2
+            
+            no_history_ctx_mix = 1/z_t.shape[-1] * torch.ones_like(z_t)
+            #print(no_history_ctx_mix.shape, no_history_ctx_mix[0])
             ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
-
-            ctx = z_t + ctx_mix
+            
+            # --- replaces: if t_cond < 0.7: ctx = 1*z_t + 1*ctx_mix else: ctx = z_t ---
+            
+            corruption = self._scheduler_corruption(t_cond, num_classes=4, scheduler=scheduler)
+            w_cur = 1 + corruption
+            w_hist = 1 - corruption
+            is_masked = (z_t.max(-1).values < 1.0)        # ~uniform ⇒ masked position
+            ctx = torch.where(is_masked[...,None], w_hist*ctx_mix + w_cur*z_t, z_t)
+            #ctx = w_cur * z_t + w_hist * ctx_mix
+            
+            #print(t_cond)
             pi = pi_hat
             #print(self.router_tau, self.router_k)
             #print(t_start,taus_cand, pi_hat.argmax(dim=-1)[0], pi_hat[pi_hat.argmax(dim=-1)])

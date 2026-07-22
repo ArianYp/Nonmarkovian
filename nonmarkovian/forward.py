@@ -60,6 +60,7 @@ def corrupt_sequence_bernoulli(
     generator: torch.Generator | None = None,
     preserve_true_until: float = 0.5,
     high_noise_error_prob: float = 0.15,
+    slm_denominator: bool = False,
 ) -> torch.Tensor:
     """SLM-style Bernoulli corruption on simplex inputs.
 
@@ -71,6 +72,8 @@ def corrupt_sequence_bernoulli(
             always preserve the ground-truth class in ``x_t``.
         high_noise_error_prob: for ``t < preserve_true_until`` (noisy region), probability of
             *not* forcing the ground-truth class to be present.
+        slm_denominator: divide ``(E[nums]-1)`` by ``num_classes`` (exact
+            ``SLM/slm.py:get_xt_bernoulli`` parity) instead of ``num_classes-1``.
     Returns:
         ``x_t`` probabilities, shape ``[B, L, num_classes]``.
     """
@@ -87,7 +90,8 @@ def corrupt_sequence_bernoulli(
     one_hot = torch.nn.functional.one_hot(x0.long(), num_classes=num_classes).to(
         dtype=torch.float32
     )
-    bernoulli_param = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
+    denom = float(num_classes) if slm_denominator else float(max(num_classes - 1, 1))
+    bernoulli_param = (expect_nums - 1.0) / denom
     bernoulli_param = torch.clamp(bernoulli_param, min=0.0, max=1.0).unsqueeze(-1).expand_as(one_hot)
     if generator is None:
         u = torch.rand(one_hot.shape, device=x0.device, dtype=torch.float32)
@@ -156,12 +160,20 @@ def sample_all_views_bernoulli(
     generator: torch.Generator | None = None,
     num_classes: int = 4,
     corruption_mode: str = "independent",
+    slm_denominator: bool = False,
 ) -> torch.Tensor:
     """Sample Bernoulli simplex views x_1..x_T from x_0.
 
     Returns shape ``[B, T, L, 4]`` where each view ``tau`` uses ``t=(tau+1)/T``.
     If ``t_start`` is provided, returns only needed views ``tau in [t_start, T-1]``,
     with shape ``[B, T - t_start, L, 4]``.
+
+    ``slm_denominator`` selects the off-diagonal Bernoulli probability divisor:
+
+    - ``False`` *(default, DNA/enhancer)*: ``(E[nums]-1) / (num_classes-1)`` so the
+      simplex is fully uniform at ``t=1``.
+    - ``True`` *(SLM ``get_xt_bernoulli`` parity, used by the protein task)*:
+      ``(E[nums]-1) / num_classes`` -- matches ``SLM/slm.py:get_xt_bernoulli`` exactly.
 
     ``corruption_mode`` controls how off-diagonal noise entries are sampled:
 
@@ -200,7 +212,8 @@ def sample_all_views_bernoulli(
     else:
         raise ValueError(f"Unknown Bernoulli scheduler: {scheduler}")
 
-    bernoulli_param = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
+    denom = float(num_classes) if slm_denominator else float(max(num_classes - 1, 1))
+    bernoulli_param = (expect_nums - 1.0) / denom
     bernoulli_param = torch.clamp(bernoulli_param, min=0.0, max=1.0).view(1, K, 1, 1)  # [1, K, 1, 1]
 
     one_hot = torch.nn.functional.one_hot(x0.long(), num_classes=num_classes).to(

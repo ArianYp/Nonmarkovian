@@ -1,0 +1,6 @@
+usage: eval_promoter_mse.py [-h] --ckpt CKPT [--data_dir DATA_DIR]
+                            [--split {valid,test}] [--num_batches NUM_BATCHES]
+                            [--batch_size BATCH_SIZE]
+                            [--sampling_steps SAMPLING_STEPS]
+                            [--device DEVICE]
+eval_promoter_mse.py: error: unrecognized arguments: -J Nonmarkovian -G s10396 -q training-parallel -n 8 -W 01:00 -R span[hosts=1] -R select[mem>128000] -R rusage[mem=128000] -M 128000 -gpu num=1:mode=exclusive_process -cwd /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian -o logs/lsf-distill-vanilla-%J.out -e logs/lsf-distill-vanilla-%J.err /bin/bash -c

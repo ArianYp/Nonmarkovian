@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 
 from nonmarkovian.device_utils import resolve_device_arg
-from nonmarkovian.forward import cosine_alpha_schedule, sample_all_views_bernoulli
+from nonmarkovian.forward import cosine_alpha_schedule, corrupt_sequence_bernoulli, sample_all_views_bernoulli
 from nonmarkovian.model import RoutedDenoiserCNN
 from nonmarkovian.vocab import IDX_TO_TOKEN
 
@@ -158,7 +158,7 @@ def sample_sequences(
         generator=generator,
     )
     print(bernoulli_scheduler,"bernoulli_scheduler")
-    threshold = 8
+    threshold = 6
     print(threshold,"threshold")
     print(use_cfg,"use_cfg")
     for i in range(1, num_steps + 1):
@@ -186,7 +186,7 @@ def sample_sequences(
 
         support_mask = (seq_in > 0) if seq_in is not None else (x_t > 0)
         support_mask = (seq_in >0) 
-        #support_mask = (x_t > 0)
+        support_mask = (x_t > 0)
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
         neg_inf = torch.finfo(logits.dtype).min
@@ -218,23 +218,63 @@ def sample_sequences(
         # (DiT, or any model returning None).
         eps = 1e-4
         
-        if corruption_mode == "independent":
-            support_mask = (x_t > 0)
-            if i > threshold*num_steps // 10 :
-                #print(i,"i")
-                sample_pred = _sample_bernoulli(predicted, generator=generator)
-            else:
-                sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
-            #print(sample_pred, i,"independent")
+        # ═══ OLD reverse step (same `predicted` noise for both modes; markov/nonmarkov differ
+        #     ONLY by the `& (x_t>0)` constraint). Commented out for A/B testing — uncomment this
+        #     block and comment the NEW block below to revert. ══════════════════════════════════
+        # if corruption_mode == "independent":
+        #     support_mask = (x_t > 0)
+        #     if i > threshold*num_steps // 10 :
+        #         #print(i,"i")
+        #         sample_pred = _sample_bernoulli(predicted, generator=generator)
+        #     else:
+        #         sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
+        #     #print(sample_pred, i,"independent")
+        # else:
+        #     support_mask = (x_t > 0)
+        #     sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
+        # #print(support_mask.shape, support_mask.sum(),x_t, t_start)
+        # sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
+        # fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
+        # sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
+        # x_t = sample_pred.to(dtype=torch.float32)
+        # x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+
+        # ═══ NEW: training-matched reverse noise (parallel to sample_mdlm) ══════════════════════
+        # The noise added is DIFFERENT per mode so intermediate x_t matches each model's training
+        # corruption (correct per-level marginal), instead of sharing one `predicted` + constraint:
+        #   * Markov / early steps: schedule-calibrated `predicted` intersected with the current
+        #     support -> the active set can only shrink (matches the monotone `trajectory` forward
+        #     corruption the Markov model was trained on).
+        #   * Non-Markov (`independent`), past the threshold: re-noise the predicted clean sequence
+        #     `hat_x0` with the ACTUAL forward Bernoulli corruption at the next (less-noisy) level.
+        #     This reproduces the i.i.d. views the independent model was trained on and lets dropped
+        #     classes re-activate (support can grow again).
+        if corruption_mode == "independent" and i > threshold * num_steps // 10:
+            #t_next = torch.clamp(t - 1.0 / float(num_steps), min=1.0 / float(num_steps))
+            #x_t = corrupt_sequence_bernoulli(
+            #    hat_x0_ids, t_next, scheduler=bernoulli_scheduler, generator=generator
+            #)
+            t3 = t.unsqueeze(-1)
+            nominator = _expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0
+            denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-8)
+            weight = torch.clamp(nominator, min=0.0, max=1.0)
+            one_hot_f = one_hot.to(dtype=weight.dtype)
+            predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
+            
+            sample_pred = _sample_bernoulli(predicted, generator=generator) 
+            sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
+            fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
+            sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
+            x_t = sample_pred.to(dtype=torch.float32)
+            x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
         else:
             support_mask = (x_t > 0)
             sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
-        #print(support_mask.shape, support_mask.sum(),x_t, t_start)
-        sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
-        fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
-        sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
-        x_t = sample_pred.to(dtype=torch.float32)
-        x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+            sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
+            fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
+            sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
+            x_t = sample_pred.to(dtype=torch.float32)
+            x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
 
     t_last = torch.full((batch, 1), 1.0 / float(num_steps), device=device, dtype=torch.float32)
     views_buffer = _refresh_views_buffer(

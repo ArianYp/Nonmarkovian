@@ -497,20 +497,23 @@ def sample_promoter(
     vocab_size:          int = 4,
     scheduler:           str = "loglinear",
     history_mode:        str = "trajectory",
+    corruption_mode:     str = "independent",
+    independent_threshold: float = 0.6,
     generator:           torch.Generator | None = None,
 ) -> torch.Tensor:
     """SLM new_diff reverse sampling for the routed promoter model.
 
     Mirrors ``sample_sequences`` from ``sample.py`` exactly, with the only
     change being that ``signal`` is threaded through every model call for
-    CAGE conditioning.
+    CAGE conditioning (the promoter task has no labels / CFG).
 
     Loop structure (same as sample.py):
       - ``i`` steps forward from 1 → T
       - ``t_start = T - i``  (T-1 down to 0)
       - ``t_val   = 1 - (i-1)/T``  (1.0 down to 1/T)
-      - support mask for logits:    ``(seq_in > 0) | (x_t > 0)``
-      - support mask for Bernoulli: ``(x_t > 0)   | one_hot(hat_x0)``
+      - support mask for logits:    ``(x_t > 0)``
+      - support mask for Bernoulli: ``(x_t > 0)`` (trajectory), or dropped after
+        ``independent_threshold`` of the steps when ``corruption_mode='independent'``
       - final denoising is a separate model call after the loop
 
     Args:
@@ -518,6 +521,14 @@ def sample_promoter(
         num_steps:           Reverse-process steps.
         num_timesteps_train: T used during training (= views buffer size).
         history_mode:        ``'trajectory'`` or ``'uniform'``.
+        corruption_mode:     ``'independent'`` or ``'trajectory'`` (mirrors
+            ``sample.py``). In ``'independent'`` mode the ``(x_t > 0)`` support
+            mask on the Bernoulli draw is dropped once ``i`` passes
+            ``independent_threshold * num_steps`` (the noisy region), letting
+            positions re-activate channels — matches the enhancer sampler.
+        independent_threshold: fraction of reverse steps after which the
+            ``independent`` support mask is dropped (default 0.6; sample.py's
+            legacy ``threshold=6`` with ``6 * num_steps // 10``).
         generator:           Optional torch.Generator for reproducibility.
 
     Returns:
@@ -542,7 +553,10 @@ def sample_promoter(
         t_val   = 1.0 - float(i - 1) / float(T)   # 1.0 → 1/T  (same as sample.py)
         t_start = T - i                            # T-1 → 0
 
-        # write current x_t into the views slot (trajectory history mode)
+        # write current x_t into the views slot (trajectory history mode);
+        # 'uniform' keeps non-current slots at 1/C (matches sample.py).
+        if history_mode == "uniform":
+            views_buffer.fill_(1.0 / float(C))
         views_buffer[:, t_start] = x_t
 
         # router + denoiser forward — full buffer, real t_start index
@@ -550,8 +564,8 @@ def sample_promoter(
             views_buffer, t_start, signal=signal, t_cond=t_val,
         )
 
-        # ── logit masking: (seq_in > 0) | (x_t > 0) ─────────────────────
-        support_mask = (seq_in > 0) | (x_t > 0)
+        # ── logit masking: (x_t > 0)  — identical to sample.py ──────────
+        support_mask = (x_t > 0)
         has_any      = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
         logits = logits.masked_fill(~support_mask, torch.finfo(logits.dtype).min)
@@ -566,15 +580,19 @@ def sample_promoter(
 
         # ── SLM reverse step (carry + Bernoulli sample) ───────────────────
         t3        = torch.full((B, 1, 1), t_val, device=device, dtype=torch.float32)
-        nominator   = torch.clamp(_expected_nums(t3 - 1.0 / T, C, scheduler) - 1.0, min=1e-1)
-        denominator = torch.clamp(_expected_nums(t3,            C, scheduler) - 1.0, min=1e-1)
+        nominator   = _expected_nums(t3 - 1.0 / T, C, scheduler) - 1.0
+        denominator = torch.clamp(_expected_nums(t3, C, scheduler) - 1.0, min=1e-8)
         weight    = torch.clamp(nominator / denominator, min=0.0, max=1.0)
         predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
 
-        # Bernoulli mask: (x_t > 0) | one_hot(hat_x0)  — identical to sample.py
-        one_hot_mask  = F.one_hot(hat_x0_ids, num_classes=C).to(dtype=torch.bool)
-        support_bern  = (x_t > 0) | one_hot_mask                           # [B, L, C] bool
-        sample_pred   = _sample_bernoulli(predicted, generator) & support_bern
+        # Bernoulli sample with (x_t > 0) support mask — identical to sample.py.
+        # 'independent' mode drops the mask in the noisy region so positions can
+        # re-activate channels; 'trajectory' always keeps the mask.
+        support_bern = (x_t > 0)
+        if corruption_mode == "independent" and i > independent_threshold * T:
+            sample_pred = _sample_bernoulli(predicted, generator)
+        else:
+            sample_pred = _sample_bernoulli(predicted, generator) & support_bern
         sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)             # [B, L, 1]
         fallback      = F.one_hot(predicted.argmax(dim=-1), num_classes=C).to(dtype=torch.bool)
         sample_pred   = torch.where(sample_pred_sum > 0, sample_pred, fallback)
@@ -583,6 +601,8 @@ def sample_promoter(
 
     # ── final denoising step (separate, same as sample.py) ────────────────
     t_last = 1.0 / float(T)
+    if history_mode == "uniform":
+        views_buffer.fill_(1.0 / float(C))
     views_buffer[:, 0] = x_t
     logits_last, _pi, _lb, _seq_in = model(
         views_buffer, 0, signal=signal, t_cond=t_last,
@@ -705,6 +725,8 @@ def validate_promoter(
                 device=device, seq_len=L,
                 scheduler=scheduler,
                 history_mode=args.history_mode,
+                corruption_mode=args.corruption_mode,
+                independent_threshold=args.independent_threshold,
             )
             gen_oh    = F.one_hot(gen_ids, num_classes=4).float()
             gen_sc    = _get_sei_profile(sei, h3k4me3_mask, gen_oh, device)
@@ -784,8 +806,16 @@ def _parse_args() -> argparse.Namespace:
                    choices=("loglinear", "linear"))
     p.add_argument("--without_T",       action="store_true",
                    help="Do not scale NLL loss by T (matches SLM training.without_T).")
-    p.add_argument("--corruption_mode", type=str, default="trajectory",
-                   choices=("independent", "trajectory"))
+    p.add_argument("--corruption_mode", type=str, default="independent",
+                   choices=("independent", "trajectory"),
+                   help="Corruption strategy for both training views and reverse "
+                        "sampling (matches train.py / enhancer). 'independent': "
+                        "fresh i.i.d. noise per timestep; 'trajectory': shared "
+                        "monotone noise draw.")
+    p.add_argument("--independent_threshold", type=float, default=0.6,
+                   help="Fraction of reverse steps after which the (x_t>0) support "
+                        "mask is dropped in --corruption_mode independent (sample.py "
+                        "legacy threshold=6 == 0.6).")
     p.add_argument("--history_mode",    type=str, default="trajectory",
                    choices=("trajectory", "uniform"),
                    help="History fill mode for reverse sampling views buffer.")
@@ -832,13 +862,33 @@ def _parse_args() -> argparse.Namespace:
 # Training loop
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _resolve_save_path(requested: str | Path, use_wandb: bool) -> Path:
+def _resolve_run_dir(requested: str | Path, use_wandb: bool) -> Path:
+    """Per-run checkpoint directory so repeat/concurrent runs never overwrite each other.
+
+    ``checkpoints/promoter.pt`` -> ``checkpoints/promoter_<runid>/`` and every
+    checkpoint (final / best / best_mse) is written *inside* that directory with
+    its clean basename. The run id is the active W&B run id when available (so the
+    directory matches the W&B run); otherwise a generated id (``wandb.util.generate_id``
+    or a uuid fallback).
+
+    NOTE: resolve this ONCE per run and reuse the result — the generated-id
+    fallback is non-deterministic, so calling it repeatedly would scatter
+    checkpoints across several directories.
+    """
     requested = Path(requested)
+    run_id = None
     if use_wandb and wandb is not None and getattr(wandb, "run", None) is not None:
-        run_dir = getattr(wandb.run, "dir", None)
-        if run_dir:
-            return Path(run_dir) / requested.name
-    return requested
+        run_id = wandb.run.id
+    if not run_id:
+        try:
+            run_id = wandb.util.generate_id() if wandb is not None else None
+        except Exception:
+            run_id = None
+    if not run_id:
+        import uuid
+
+        run_id = uuid.uuid4().hex[:8]
+    return requested.parent / f"{requested.stem}_{run_id}"
 
 
 def _to_float(x: torch.Tensor | float) -> float:
@@ -897,6 +947,22 @@ def _train_loop(
     best_mse        = float("inf")
     best_mse_path: Path | None = None
     global_step     = 0
+
+    # Resolve the per-run checkpoint directory ONCE (rank 0), so best/best_mse/final
+    # all land together and repeat runs never overwrite each other.
+    base_name = final_path = best_path = best_mse_path_target = None
+    if rank == 0:
+        run_dir   = _resolve_run_dir(args.save, use_wandb)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        base_name = Path(args.save).name                       # e.g. promoter.pt
+        stem, suffix = Path(base_name).stem, Path(base_name).suffix
+        final_path          = run_dir / base_name
+        best_path           = run_dir / f"{stem}.best{suffix}"
+        best_mse_path_target = run_dir / f"{stem}.best_mse{suffix}"
+        print(f"checkpoints -> {run_dir}/  "
+              f"(final={base_name}, best={stem}.best{suffix}, best_mse={stem}.best_mse{suffix})")
+        if use_wandb:
+            wandb.summary["checkpoint_dir"] = str(run_dir.resolve())
 
     T         = int(args.T)
     scheduler = args.bernoulli_scheduler
@@ -1055,8 +1121,7 @@ def _train_loop(
                 cur_val = float(vmetrics["val/loss"])
                 if cur_val < best_val_loss:
                     best_val_loss = cur_val
-                    save_path    = _resolve_save_path(args.save, use_wandb)
-                    best_save_path = save_path.with_name(f"{save_path.stem}.best{save_path.suffix}")
+                    best_save_path = best_path
                     best_save_path.parent.mkdir(parents=True, exist_ok=True)
                     torch.save({
                         "model":           m.state_dict(),
@@ -1076,8 +1141,7 @@ def _train_loop(
                 cur_mse = vmetrics.get("val/sp_mse")
                 if in_mse_window and cur_mse is not None and float(cur_mse) < best_mse:
                     best_mse = float(cur_mse)
-                    save_path = _resolve_save_path(args.save, use_wandb)
-                    best_mse_path = save_path.with_name(f"{save_path.stem}.best_mse{save_path.suffix}")
+                    best_mse_path = best_mse_path_target
                     best_mse_path.parent.mkdir(parents=True, exist_ok=True)
                     torch.save({
                         "model":            m.state_dict(),
@@ -1099,13 +1163,12 @@ def _train_loop(
 
     # ── save final checkpoint ─────────────────────────────────────────────
     if rank == 0:
-        save_path = _resolve_save_path(args.save, use_wandb)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save({
             "model": unwrap_ddp(model).state_dict(),
             "args":  vars(args),
-        }, save_path)
-        print(f"Saved final checkpoint: {save_path}")
+        }, final_path)
+        print(f"Saved final checkpoint: {final_path}")
         if best_save_path is not None:
             print(f"Best checkpoint:  {best_save_path}  (val/loss={best_val_loss:.4f})")
         if best_mse_path is not None:

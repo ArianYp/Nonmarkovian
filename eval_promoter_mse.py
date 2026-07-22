@@ -132,6 +132,7 @@ def evaluate(args: argparse.Namespace) -> None:
             num_timesteps_train=num_timesteps,
             device=device,
             seq_len=seq_length,
+            independent_threshold=args.independent_threshold,
             scheduler=scheduler,
             history_mode=history_mode,
         )                                                   # [B, L]
@@ -166,6 +167,8 @@ def main() -> None:
     p.add_argument("--sampling_steps", type=int, default=0,
                    help="Reverse steps (0 = use checkpoint's saved value).")
     p.add_argument("--device",         type=str, default="cuda:0")
+    p.add_argument("--independent_threshold", type=float, default=0.6,
+                   help="Independent threshold for sampling (default 0.6).")
     args = p.parse_args()
     evaluate(args)
 

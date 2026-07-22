@@ -1,0 +1,130 @@
+W0704 14:30:27.272000 22426094224512 torch/distributed/run.py:757] 
+W0704 14:30:27.272000 22426094224512 torch/distributed/run.py:757] *****************************************
+W0704 14:30:27.272000 22426094224512 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0704 14:30:27.272000 22426094224512 torch/distributed/run.py:757] *****************************************
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /nfs/users/nfs_a/ap55/.netrc.
+wandb: Currently logged in as: arian-yazdan2001 (shariflab) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: setting up run dcdj7zas
+wandb: Tracking run with wandb version 0.26.0
+wandb: Run data is saved locally in /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/wandb/run-20260704_143110-dcdj7zas
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run graceful-donkey-12
+wandb: ⭐️ View project at https://wandb.ai/shariflab/nonmarkovian_promoter
+wandb: 🚀 View run at https://wandb.ai/shariflab/nonmarkovian_promoter/runs/dcdj7zas
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 22142-22143, summary, console lines 76-77
+wandb: 
+wandb: Run history:
+wandb:                   epoch ▁▁▂▂▂▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇██
+wandb:         train/batch_idx ▁▁▂▅▇▂▄▄▅▆▇▄▅▇▃▅▃▄▆▇▁██▆▃▅▅▅▄▇▅▁▂▃▄▂▂▃▄▄
+wandb: train/batches_per_epoch ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         train/diff_loss █▁▂▁▅▇▂▃▇▂▃▄▁▂█▂▂▆▁▂▂▁▂▂▁▅▁▂▂▅▆▃▁▁▂▁▁▆▁▄
+wandb:    train/epoch_loss_avg █▃▃▂▂▂▂▂▂▂▂▂▂▂▂▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         train/grad_norm ▃█▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:              train/loss ▆▁▇▁▁▁▁▁▃▁▂▃▂▃▁▃▇▂▃▃▂▂█▃▁▃▂▂▁▅▆▁▁▂▁▁▁▄▁▄
+wandb:                train/lr ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:    train/router_entropy ▄▃▅▁▅█▂▁▆▂▁▃▃▁▂▁▁▁▂▃▂▂▆▂▃▁▇▁▄▁▃▂▁▁▂▂▃▁▁▁
+wandb:           train/t_start ▅▁█▄▁▂▅▇██▂▅▆█▇▆▂▄▇█▁▇▃▄▁▂▃▃▆█▄▆▆▃▆▆▆▃▁▇
+wandb:                      +2 ...
+wandb: 
+wandb: Run summary:
+wandb:     checkpoint_best_path /lustre/scratch126/c...
+wandb: checkpoint_best_val_loss 372.48124
+wandb:           checkpoint_dir /lustre/scratch126/c...
+wandb:         cuda_device_name NVIDIA H100 80GB HBM...
+wandb:              cuda_usable True
+wandb:                   device cuda:0
+wandb:              distributed True
+wandb:                    epoch 32
+wandb:   model/total_parameters 13274244
+wandb:          train/batch_idx 691
+wandb:                      +11 ...
+wandb: 
+wandb: 🚀 View run graceful-donkey-12 at: https://wandb.ai/shariflab/nonmarkovian_promoter/runs/dcdj7zas
+wandb: ⭐️ View project at: https://wandb.ai/shariflab/nonmarkovian_promoter
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260704_143110-dcdj7zas/logs
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 628, in save
+    _save(obj, opened_zipfile, pickle_module, pickle_protocol, _disable_byteorder_record)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 862, in _save
+    zip_file.write_record(name, storage, num_bytes)
+RuntimeError: [enforce fail at inline_container.cc:764] . PytorchStreamWriter failed writing file data/11: file write failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/nonmark_promoter.py", line 1292, in <module>
+    main()
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/nonmark_promoter.py", line 1276, in main
+    _train_loop(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/nonmark_promoter.py", line 1126, in _train_loop
+    torch.save({
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 627, in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 475, in __exit__
+    self.file_like.write_end_of_file()
+RuntimeError: [enforce fail at inline_container.cc:595] . unexpected pos 43776 vs 43664
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 628, in save
+[rank0]:     _save(obj, opened_zipfile, pickle_module, pickle_protocol, _disable_byteorder_record)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 862, in _save
+[rank0]:     zip_file.write_record(name, storage, num_bytes)
+[rank0]: RuntimeError: [enforce fail at inline_container.cc:764] . PytorchStreamWriter failed writing file data/11: file write failed
+
+[rank0]: During handling of the above exception, another exception occurred:
+
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+[rank0]:     return _run_code(code, main_globals, None,
+[rank0]:   File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+[rank0]:     exec(code, run_globals)
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/nonmark_promoter.py", line 1292, in <module>
+[rank0]:     main()
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/nonmark_promoter.py", line 1276, in main
+[rank0]:     _train_loop(
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/nonmarkovian/nonmark_promoter.py", line 1126, in _train_loop
+[rank0]:     torch.save({
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 627, in save
+[rank0]:     with _open_zipfile_writer(f) as opened_zipfile:
+[rank0]:   File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/serialization.py", line 475, in __exit__
+[rank0]:     self.file_like.write_end_of_file()
+[rank0]: RuntimeError: [enforce fail at inline_container.cc:595] . unexpected pos 43776 vs 43664
+W0704 14:56:49.722000 22426094224512 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 1775280 closing signal SIGTERM
+W0704 14:56:49.722000 22426094224512 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 1775281 closing signal SIGTERM
+W0704 14:56:49.722000 22426094224512 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 1775282 closing signal SIGTERM
+E0704 14:56:50.654000 22426094224512 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 1) local_rank: 0 (pid: 1775279) of binary: /lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/python
+Traceback (most recent call last):
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/lustre/scratch126/cellgen/lotfollahi/ap55/Nonmarkovian/virtualenv/Python3.11.3/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+nonmarkovian.nonmark_promoter FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-07-04_14:56:49
+  host      : farm-gpu0304.internal.sanger.ac.uk
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 1775279)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

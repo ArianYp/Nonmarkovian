@@ -311,7 +311,7 @@ def main() -> None:
         overrides["seed"] = int(cli.seed)
     overrides["guidance_scale"] = float(cli.guidance_scale)
     args = _build_args_namespace(cfg, overrides)
-
+    print('trainer', trainer)
     # --- model ---
     if trainer == "routed_discrete":
         model = _build_routed_model(cfg, device)
