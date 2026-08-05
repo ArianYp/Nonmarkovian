@@ -58,7 +58,9 @@ def sample_protein_sequences(
             views_buffer.fill_(1.0 / float(vocab))
         views_buffer[:, t_start] = x_t
 
-        logits, _pi, _h, _lb, seq_in = model(views_buffer, t_start, t_cond=float(t[0, 0].item()))
+        logits, _pi, _h, _lb, seq_in = model(
+            views_buffer, t_start, t_cond=float(t[0, 0].item()), scheduler=bernoulli_scheduler
+        )
 
         support_mask = (x_t > 0)
         has_any = support_mask.any(dim=-1, keepdim=True)
@@ -97,7 +99,9 @@ def sample_protein_sequences(
     if history_mode == "uniform":
         views_buffer.fill_(1.0 / float(vocab))
     views_buffer[:, 0] = x_t
-    logits_last, _pi, _h, _lb, _seq_in = model(views_buffer, 0, t_cond=float(t_last[0, 0].item()))
+    logits_last, _pi, _h, _lb, _seq_in = model(
+        views_buffer, 0, t_cond=float(t_last[0, 0].item()), scheduler=bernoulli_scheduler
+    )
     return logits_last.argmax(dim=-1).clamp(max=vocab - 1)
 
 

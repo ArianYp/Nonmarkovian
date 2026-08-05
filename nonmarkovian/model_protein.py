@@ -139,6 +139,25 @@ class RoutedDenoiserDiTBFN(nn.Module):
         bar_pi = pi_soft.mean(dim=0)
         return (float(K) * (f * bar_pi).sum()).to(e.dtype)
 
+    def _scheduler_corruption(
+        self, t_cond, num_classes: int | None = None, scheduler: str = "loglinear"
+    ) -> torch.Tensor:
+        """Corruption fraction at ``t_cond`` (0 = clean/final, 1 = fully noised/start).
+
+        Mirrors :meth:`RoutedDenoiserCNN._scheduler_corruption` (which matches
+        ``forward.py`` / ``forward_mdlm.py``'s expected-collision curve), but generalised
+        from the 4-channel DNA simplex to the ``vocab_size``-channel protein simplex.
+        """
+        nc = int(self.vocab_size if num_classes is None else num_classes)
+        t = t_cond if torch.is_tensor(t_cond) else torch.tensor(float(t_cond))
+        if scheduler == "loglinear":
+            expect_nums = torch.exp(torch.log(torch.tensor(float(nc), device=t.device)) * t)
+        else:  # "linear"
+            expect_nums = float(nc) * t
+        expect_nums = torch.clamp(expect_nums, min=1.0)
+        corruption = (expect_nums - 1.0) / float(max(nc - 1, 1))
+        return torch.clamp(corruption, 0.0, 1.0)
+
     def forward(
         self,
         x_views: torch.Tensor,
@@ -146,6 +165,7 @@ class RoutedDenoiserDiTBFN(nn.Module):
         labels: torch.Tensor | None = None,
         t_cond: float | int | None = None,
         t_start_abs: int | None = None,
+        scheduler: str = "loglinear",
     ):
         if x_views.ndim != 4:
             raise ValueError("x_views must be [B, T, L, V]")
@@ -154,6 +174,13 @@ class RoutedDenoiserDiTBFN(nn.Module):
         if not (0 <= t_start < T):
             raise ValueError("t_start out of range")
         t_start_state = int(t_start) if t_start_abs is None else int(t_start_abs)
+
+        # Per-sample diffusion time in [0, 1], shared by the scheduler-corruption
+        # context weighting and the DiT sigma conditioning.
+        if t_cond is None:
+            t_val = (float(t_start_state) + 0.5) / float(self.num_timesteps)
+        else:
+            t_val = float(t_cond)
 
         z_t, z_cand, _taus = self._embed_current_and_candidates(x_views, t_start)
 
@@ -168,17 +195,23 @@ class RoutedDenoiserDiTBFN(nn.Module):
             pi_w = pi_hat.view(B, -1, 1, 1)
             ctx_mix = (z_cand * pi_w).sum(dim=1)  # [B, L, V]
             ctx_mix = _ste_hard_threshold(ctx_mix, float(self.ctx_mix_eps))
-            ctx = 1*z_t + 1*ctx_mix
+
+            # Corruption-scheduled blend of the current view and the routed history,
+            # gated to non-clean positions only -- identical to RoutedDenoiserCNN, just
+            # over the vocab_size-channel simplex. A clean position is a one-hot
+            # (max == 1); masked (MDLM -> uniform 1/V) or Bernoulli-corrupted positions
+            # are multi-hot with max < 1, so history is mixed in only where it can help.
+            corruption = self._scheduler_corruption(
+                t_val, num_classes=self.vocab_size, scheduler=scheduler
+            )
+            w_cur = 1.0 + corruption
+            w_hist = 1.0 - corruption
+            is_masked = (z_t.max(-1).values < 1.0)
+            ctx = torch.where(is_masked[..., None], w_hist * ctx_mix + w_cur * z_t, z_t)
             pi = pi_hat
 
         seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)  # [B, L, V] simplex
 
-        # Per-sample diffusion time in [0, 1] for the DiT sigma conditioning.
-        if t_cond is None:
-            t_val = (float(t_start_state) + 0.5) / float(self.num_timesteps)
-        else:
-            t_val = float(t_cond)
-            
         sigma = torch.full((B,), t_val, device=device, dtype=torch.float32)
 
         logits = self.dit(seq_in, sigma)  # [B, L, V] raw logits

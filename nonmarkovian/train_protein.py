@@ -182,7 +182,9 @@ def _diffusion_loss(model, x0, attn, args, device, gen):
         corruption_mode=args.corruption_mode,
         slm_denominator=True,  # match SLM get_xt_bernoulli ((E[nums]-1)/vocab_size)
     )
-    logits, pi, _h, loss_bal, _seq_in = model(views, 0, t_cond=t_cont, t_start_abs=t_start)
+    logits, pi, _h, loss_bal, _seq_in = model(
+        views, 0, t_cond=t_cont, t_start_abs=t_start, scheduler=args.bernoulli_scheduler
+    )
     log_probs = F.log_softmax(logits, dim=-1)
     nlog_p = -torch.gather(log_probs, -1, x0[:, :, None]).squeeze(-1)  # [B, L]
     if not args.without_T:

@@ -326,6 +326,23 @@ class RoutedDenoiserPromoter(nn.Module):
         bar_pi = pi_soft.mean(dim=0)
         return (float(K) * (f * bar_pi).sum()).to(e.dtype)
 
+    def _scheduler_corruption(
+        self, t_cond, num_classes: int = 4, scheduler: str = "loglinear"
+    ) -> torch.Tensor:
+        """Corruption fraction at ``t_cond`` (0 = clean/final, 1 = fully noised/start).
+
+        Matches ``RoutedDenoiserCNN._scheduler_corruption`` / the Bernoulli
+        expected-collision curve in ``_expected_nums``.
+        """
+        t = t_cond if torch.is_tensor(t_cond) else torch.tensor(float(t_cond))
+        if scheduler == "loglinear":
+            expect_nums = torch.exp(torch.log(torch.tensor(float(num_classes), device=t.device)) * t)
+        else:  # "linear"
+            expect_nums = float(num_classes) * t
+        expect_nums = torch.clamp(expect_nums, min=1.0)
+        corruption = (expect_nums - 1.0) / float(max(num_classes - 1, 1))
+        return torch.clamp(corruption, 0.0, 1.0)
+
     # ── forward ────────────────────────────────────────────────────────────
 
     def forward(
@@ -335,6 +352,7 @@ class RoutedDenoiserPromoter(nn.Module):
         signal:      torch.Tensor,
         t_cond:      float | None = None,
         t_start_abs: int   | None = None,
+        scheduler:   str          = "loglinear",
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
@@ -357,6 +375,12 @@ class RoutedDenoiserPromoter(nn.Module):
         device    = x_views.device
         t_abs     = int(t_start) if t_start_abs is None else int(t_start_abs)
 
+        # ── time (shared by the corruption blend and denoiser conditioning) ─
+        if t_cond is None:
+            t_float = float(t_abs + 1) / float(self.num_timesteps)
+        else:
+            t_float = float(t_cond)
+
         z_t, z_cand, _ = self._embed_current_and_candidates(x_views, t_start)
 
         # ── routing ───────────────────────────────────────────────────────
@@ -370,16 +394,19 @@ class RoutedDenoiserPromoter(nn.Module):
             loss_bal      = self._load_balance_loss(e, pi_s) if self.training else e.new_tensor(0.0)
             ctx_mix       = (z_cand * pi_hat.view(B, -1, 1, 1)).sum(dim=1)
             ctx_mix       = _ste_hard_threshold(ctx_mix, self.ctx_mix_eps)
-            ctx           = z_t + ctx_mix
+
+            # Corruption-scheduled blend of current view + routed history, gated to
+            # non-clean positions only -- identical to RoutedDenoiserCNN. A clean
+            # position is a one-hot (max == 1); Bernoulli-corrupted / masked positions
+            # are multi-hot with max < 1, so history is mixed in only where it helps.
+            corruption    = self._scheduler_corruption(t_float, num_classes=4, scheduler=scheduler)
+            w_cur         = 1.0 + corruption
+            w_hist        = 1.0 - corruption
+            is_masked     = (z_t.max(-1).values < 1.0)
+            ctx           = torch.where(is_masked[..., None], w_hist * ctx_mix + w_cur * z_t, z_t)
             pi            = pi_hat
 
-        seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)  # [B, L, 4]
-
-        # ── time conditioning  ────────────────────────────────────────────
-        if t_cond is None:
-            t_float = float(t_abs + 1) / float(self.num_timesteps)
-        else:
-            t_float = float(t_cond)
+        seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)  
         t_b = torch.full((B,), t_float, device=device, dtype=torch.float32)
 
         logits = self.promoter_model(seq_in, t_b, signal)   # [B, L, 4]
@@ -561,7 +588,7 @@ def sample_promoter(
 
         # router + denoiser forward — full buffer, real t_start index
         logits, _pi, _lb, seq_in = model(
-            views_buffer, t_start, signal=signal, t_cond=t_val,
+            views_buffer, t_start, signal=signal, t_cond=t_val, scheduler=scheduler,
         )
 
         # ── logit masking: (x_t > 0)  — identical to sample.py ──────────
@@ -605,7 +632,7 @@ def sample_promoter(
         views_buffer.fill_(1.0 / float(C))
     views_buffer[:, 0] = x_t
     logits_last, _pi, _lb, _seq_in = model(
-        views_buffer, 0, signal=signal, t_cond=t_last,
+        views_buffer, 0, signal=signal, t_cond=t_last, scheduler=scheduler,
     )
     ids = logits_last.argmax(dim=-1).clamp(max=C - 1)
 
@@ -701,7 +728,7 @@ def validate_promoter(
         )                                       # [B, num_ts - t_start, L, 4]
 
         logits, _, _, _ = model(
-            views, 0, signal=signal, t_cond=t_cont, t_start_abs=t_start
+            views, 0, signal=signal, t_cond=t_cont, t_start_abs=t_start, scheduler=scheduler
         )
         log_probs = F.log_softmax(logits, dim=-1)
         nll = -log_probs.gather(-1, x0[:, :, None]).squeeze(-1)  # [B, L]
@@ -1001,7 +1028,7 @@ def _train_loop(
             if args.log_timing:
                 t0 = tic(device)
             logits, pi, loss_bal, seq_in = model(
-                views, 0, signal=signal, t_cond=t_cont, t_start_abs=t_start
+                views, 0, signal=signal, t_cond=t_cont, t_start_abs=t_start, scheduler=scheduler
             )
             ms_fwd = toc_ms(t0, device) if args.log_timing else 0.0
 
