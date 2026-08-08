@@ -194,6 +194,33 @@ def _parse_train_args() -> argparse.Namespace:
         help="Classifier-free label drop probability (SLM new_diff uses 0.3).",
     )
     p.add_argument(
+        "--error_correction",
+        action="store_true",
+        help=(
+            "Enable the two-stage self-correction objective. Stage 1 is the normal MDLM prediction "
+            "(mask x0, predict x0). Stage 2 re-corrupts the model's own stage-1 reconstruction "
+            "(true tokens at observed positions, model prediction at masked positions) and trains "
+            "it to recover the *true* x0 -- injecting the model's own mistakes into the "
+            "conditioning context, the error-correction signal ordinary MDLM training never "
+            "produces (observed tokens are always correct there)."
+        ),
+    )
+    p.add_argument(
+        "--ec_loss_weight",
+        type=float,
+        default=1.0,
+        help="Weight on the stage-2 self-correction loss added to the stage-1 MDLM loss.",
+    )
+    p.add_argument(
+        "--ec_sample",
+        action="store_true",
+        help=(
+            "Build the stage-2 reconstruction by SAMPLING from the stage-1 predictive distribution "
+            "at masked positions instead of taking the argmax. Sampling yields more diverse "
+            "mistake examples; argmax (default) uses the model's most-confident guess."
+        ),
+    )
+    p.add_argument(
         "--val_new_diff_calculate",
         type=str,
         default="full",
@@ -774,9 +801,62 @@ def _train_loop(
             denom = float(target.shape[0] * target.shape[1])
             diff_loss = nlog_p.float().sum() / denom
 
+            # --- Stage 2: self-correction (error-injection) --------------------------------
+            # Standard MDLM training only ever shows the model *correct* observed tokens, so it
+            # never learns that an observed token might be wrong and need repair (the gap the
+            # non-Markovian error-correction argument runs into). Here we close that gap: build
+            # the reconstruction the reverse process would actually carry forward -- true tokens
+            # at stage-1 observed positions, the model's own prediction at masked positions --
+            # then RE-corrupt that (error-containing) reconstruction and train the model to
+            # recover the true x0. Wherever the stage-1 prediction was wrong, stage 2 now
+            # presents that mistake as an observed token whose target is the correct base.
+            diff_loss_ec = None
+            loss_bal_ec = None
+            if args.error_correction:
+                with torch.no_grad():
+                    # Stage-1 masked positions: current view (slot 0) is uniform (max < 1) there.
+                    masked_stage1 = views[:, 0].amax(dim=-1) < 1.0  # [B, L]
+                    if args.ec_sample:
+                        probs = F.softmax(logits.detach(), dim=-1).reshape(-1, logits.shape[-1])
+                        pred_ids = torch.multinomial(probs, 1, generator=gen).reshape(B, L)
+                    else:
+                        pred_ids = logits.detach().argmax(dim=-1)  # [B, L]
+                    # Committed reconstruction x0_hat in {0..3}: model fills masked slots, keeps
+                    # the (correct) observed tokens elsewhere. Errors live where the model's fill
+                    # disagrees with the truth.
+                    x0_hat = torch.where(masked_stage1, pred_ids, target)
+
+                gen_ec = torch.Generator(device=x0.device)
+                gen_ec.manual_seed(global_step + epoch * 10000 + 777)
+                views_ec = sample_all_views_mask(
+                    x0_hat,
+                    args.num_timesteps,
+                    t_start=t_start,
+                    scheduler=args.bernoulli_scheduler,
+                    generator=gen_ec,
+                    corruption_mode=args.corruption_mode,
+                    return_simplex=True,
+                )
+                logits_ec, _pi_ec, _h_ec, loss_bal_ec, _seq_ec = model(
+                    views_ec,
+                    0,
+                    labels=labels_in,
+                    t_cond=t_cont,
+                    t_start_abs=t_start,
+                    scheduler=args.bernoulli_scheduler,
+                )
+                # Target is the TRUE x0, not x0_hat: the model must correct its own mistakes.
+                log_probs_ec = F.log_softmax(logits_ec, dim=-1)
+                ce_ec = -torch.gather(log_probs_ec, -1, target[:, :, None]).squeeze(-1)  # [B, L]
+                diff_loss_ec = (loss_weight * ce_ec).float().sum() / denom
+
             loss = diff_loss
+            if diff_loss_ec is not None:
+                loss = loss + args.ec_loss_weight * diff_loss_ec
             if args.router_lambda_bal > 0:
                 loss = loss + args.router_lambda_bal * loss_bal
+                if loss_bal_ec is not None:
+                    loss = loss + args.router_lambda_bal * loss_bal_ec
             if aux_loss_val is not None:
                 loss = loss + args.aux_beta * aux_loss_val
             ms_loss = toc_ms(t0, device) if args.log_timing else 0.0
@@ -815,6 +895,11 @@ def _train_loop(
                 log_payload: dict = {
                     "train/loss": float(loss.item()),
                     "train/diff_loss": float(diff_loss.item()),
+                    **(
+                        {"train/diff_loss_ec": float(diff_loss_ec.item())}
+                        if diff_loss_ec is not None
+                        else {}
+                    ),
                     "train/t_start": t_start,
                     "train/learning_rate": opt.param_groups[0]["lr"],
                     "train/grad_norm_model": _to_float(grad_norm_model),
