@@ -48,12 +48,28 @@ def sample_sequences_simple(
     guidance_scale: float = 0.0,
     bernoulli_scheduler: str = "loglinear",
     generator: torch.Generator | None = None,
-) -> torch.Tensor:
-    """SLM-style new_diff reverse sampling in simplex space."""
+    return_trajectory: bool = False,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """SLM-style new_diff reverse sampling in simplex space.
+
+    ``return_trajectory=True`` also returns the ``states`` ``[B, T + 2, L]`` and ``beliefs``
+    ``[B, T, L]`` trajectories laid out exactly as in ``sample.sample_sequences``; see that
+    docstring. This sampler always intersects with the current support, so a collapsed position is
+    frozen -- it is the Markovian control for the mind-change experiment.
+    """
+    from nonmarkovian.sample import _simplex_to_bitmask, _simplex_to_tokens
+
     model.eval()
     num_steps = int(alphas_sample.shape[0])
     vocab = 4
     x_t = torch.full((batch, seq_len, vocab), 1.0 / float(vocab), device=device, dtype=torch.float32)
+    frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    pred_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    support_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    constrained_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    if frames is not None:
+        frames.append(_simplex_to_tokens(x_t))
+        support_frames.append(_simplex_to_bitmask(x_t))
 
     use_cfg = float(guidance_scale) != 0.0 and labels is not None
     null_lab: torch.Tensor | None = None
@@ -74,6 +90,9 @@ def sample_sequences_simple(
         else:
             logits, _ = model(x_t, t.squeeze(-1), labels=labels)
 
+        if pred_frames is not None:
+            pred_frames.append(logits[..., :vocab].argmax(dim=-1).to("cpu", torch.uint8))
+
         support_mask = x_t > 0
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
@@ -88,6 +107,11 @@ def sample_sequences_simple(
         ):
             model_prob = model_prob / model_prob.sum(dim=-1, keepdim=True).clamp(min=1e-8)
 
+        if constrained_frames is not None:
+            # argmax *within the current shortlist* (model_prob is already support-masked): the
+            # base this step would settle on if the shortlist never re-expanded.
+            constrained_frames.append(model_prob.argmax(dim=-1).to("cpu", torch.uint8))
+
         t3 = t.unsqueeze(-1)
         nominator = _expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0
         denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-8)
@@ -100,6 +124,9 @@ def sample_sequences_simple(
         sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
         x_t = sample_pred.to(dtype=torch.float32)
         x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+        if frames is not None:
+            frames.append(_simplex_to_tokens(x_t))
+            support_frames.append(_simplex_to_bitmask(x_t))
 
     t_last = torch.full((batch, 1), 1.0 / float(num_steps), device=device, dtype=torch.float32)
     if use_cfg:
@@ -109,7 +136,20 @@ def sample_sequences_simple(
         logits_last = logits_last - torch.logsumexp(logits_last, dim=-1, keepdim=True)
     else:
         logits_last, _ = model(x_t, t_last.squeeze(-1), labels=labels)
-    return logits_last.argmax(dim=-1).clamp(max=3)
+    final = logits_last.argmax(dim=-1).clamp(max=3)
+    if frames is not None:
+        frames.append(final.to("cpu", torch.uint8))
+        support_frames.append(
+            (torch.ones_like(final, dtype=torch.uint8) << final.to(torch.uint8)).cpu()
+        )
+        return (
+            final,
+            torch.stack(frames, dim=1),
+            torch.stack(pred_frames, dim=1),
+            torch.stack(support_frames, dim=1),
+            torch.stack(constrained_frames, dim=1),
+        )
+    return final
 
 
 def main() -> None:

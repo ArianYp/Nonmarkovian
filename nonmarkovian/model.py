@@ -352,7 +352,7 @@ class RoutedDenoiserCNN(nn.Module):
             w_hist = 1 - corruption
             is_masked = (z_t.max(-1).values < 1.0)        # ~uniform ⇒ masked position
             #ctx = torch.where(is_masked[...,None], w_hist*ctx_mix + w_cur*z_t, z_t)
-            ctx = w_cur * z_t + w_hist * ctx_mix
+            ctx = w_cur*z_t + w_hist*ctx_mix
             
             #print(t_cond)
             pi = pi_hat
@@ -366,6 +366,7 @@ class RoutedDenoiserCNN(nn.Module):
             #print(pi_hat.shape,s_cand.shape,s_cand[pi_hat.argmax(dim=-1)], pi_hat.to(dtype=torch.float32) @ s_cand , pi_hat.argmax(dim=-1),print(pi_hat))
             #state_cond = s_cur + pi_hat.to(dtype=torch.float32) @ s_cand            # [B, H]
             state_cond = None
+
         seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)
         if t_cond is None:
             t_b = torch.full((B,), int(t_start_state), device=device, dtype=torch.long)

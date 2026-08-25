@@ -221,6 +221,19 @@ def _parse_train_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--ec_no_history",
+        action="store_true",
+        default=False,
+        help=(
+            "Build the stage-2 reconstruction from a NO-HISTORY forward pass: every candidate "
+            "history view is blanked to the uniform 1/C simplex (what a fully-masked view looks "
+            "like) and only the current view is kept. The deliberately weaker prediction plants "
+            "MORE wrong tokens in the stage-2 context, which is the signal the self-correction "
+            "objective trains on. OFF by default: without this flag the stage-1 full-history "
+            "logits are reused (the with-history baseline)."
+        ),
+    )
+    p.add_argument(
         "--val_new_diff_calculate",
         type=str,
         default="full",
@@ -720,6 +733,11 @@ def _train_loop(
         n_batches = 0
         num_batches = len(loader)
         sum_ms_views = sum_ms_fwd = sum_ms_loss = sum_ms_bwd = 0.0
+        ec_epoch_seqs = 0
+        ec_epoch_seen_seqs = 0
+        ec_epoch_seen_seqs_cur = 0
+        ec_epoch_err_pos = 0.0
+        ec_epoch_masked_pos = 0.0
         for batch_idx, batch in enumerate(loader):
             x0 = batch["x0"].to(device)
             if _use_conditional_sampling_labels(args):
@@ -812,19 +830,38 @@ def _train_loop(
             # presents that mistake as an observed token whose target is the correct base.
             diff_loss_ec = None
             loss_bal_ec = None
+            ec_stats: dict[str, float] = {}
             if args.error_correction:
                 with torch.no_grad():
                     # Stage-1 masked positions: current view (slot 0) is uniform (max < 1) there.
                     masked_stage1 = views[:, 0].amax(dim=-1) < 1.0  # [B, L]
+                    if args.ec_no_history:
+                        # Deliberately weaken the prediction: blank every candidate history view
+                        # to the uniform 1/C simplex and keep only the current view, so the fill
+                        # is made without the non-Markovian context. More mistakes here means
+                        # more genuine error-correction signal in stage 2.
+                        views_pred = views.new_full(views.shape, 0.25)
+                        views_pred[:, 0] = views[:, 0]
+                        logits_pred = model(
+                            views_pred,
+                            0,
+                            labels=labels_in,
+                            t_cond=t_cont,
+                            t_start_abs=t_start,
+                            scheduler=args.bernoulli_scheduler,
+                        )[0]
+                    else:
+                        logits_pred = logits.detach()
                     if args.ec_sample:
-                        probs = F.softmax(logits.detach(), dim=-1).reshape(-1, logits.shape[-1])
+                        probs = F.softmax(logits_pred, dim=-1).reshape(-1, logits_pred.shape[-1])
                         pred_ids = torch.multinomial(probs, 1, generator=gen).reshape(B, L)
                     else:
-                        pred_ids = logits.detach().argmax(dim=-1)  # [B, L]
+                        pred_ids = logits_pred.argmax(dim=-1)  # [B, L]
                     # Committed reconstruction x0_hat in {0..3}: model fills masked slots, keeps
                     # the (correct) observed tokens elsewhere. Errors live where the model's fill
                     # disagrees with the truth.
                     x0_hat = torch.where(masked_stage1, pred_ids, target)
+                    err_pos = x0_hat != target  # [B, L] -- planted mistakes
 
                 gen_ec = torch.Generator(device=x0.device)
                 gen_ec.manual_seed(global_step + epoch * 10000 + 777)
@@ -837,6 +874,43 @@ def _train_loop(
                     corruption_mode=args.corruption_mode,
                     return_simplex=True,
                 )
+
+                with torch.no_grad():
+                    # A planted mistake only *teaches* correction if the model can actually see it:
+                    # the re-corruption must leave that position one-hot (observed) in some view.
+                    # amax >= 1 <=> one-hot <=> unmasked (masked slots are the uniform 0.25 simplex).
+                    observed_ec = views_ec.amax(dim=-1) >= 1.0  # [B, K, L]
+                    seen_err = observed_ec & err_pos[:, None, :]  # [B, K, L]
+                    seq_any = seen_err.flatten(1).any(dim=1)  # [B] error visible in ANY view
+                    seq_any_cur = seen_err[:, 0].any(dim=1)  # [B] error visible in current view
+                    n_err = float(err_pos.sum().item())
+                    n_masked = float(masked_stage1.sum().item())
+                    n_seen_seqs = int(seq_any.sum().item())
+                    n_seen_seqs_cur = int(seq_any_cur.sum().item())
+                    ec_stats = {
+                        # How wrong the (no-history) fill was, over the positions it had to fill.
+                        "train/ec_fill_error_rate": n_err / max(n_masked, 1.0),
+                        "train/ec_err_positions_per_seq": n_err / float(B),
+                        # Sequences whose stage-2 context contains >=1 WRONG one-hot token.
+                        "train/ec_seqs_with_visible_error": float(n_seen_seqs),
+                        "train/ec_seqs_with_visible_error_frac": n_seen_seqs / float(B),
+                        "train/ec_seqs_with_visible_error_current_view": float(n_seen_seqs_cur),
+                        "train/ec_seqs_with_visible_error_current_view_frac": (
+                            n_seen_seqs_cur / float(B)
+                        ),
+                        "train/ec_visible_err_positions_current_view_per_seq": (
+                            float(seen_err[:, 0].sum().item()) / float(B)
+                        ),
+                        "train/ec_visible_err_positions_all_views_per_seq": (
+                            float(seen_err.sum().item()) / float(B)
+                        ),
+                    }
+                    ec_epoch_seqs += B
+                    ec_epoch_seen_seqs += n_seen_seqs
+                    ec_epoch_seen_seqs_cur += n_seen_seqs_cur
+                    ec_epoch_err_pos += n_err
+                    ec_epoch_masked_pos += n_masked
+
                 logits_ec, _pi_ec, _h_ec, loss_bal_ec, _seq_ec = model(
                     views_ec,
                     0,
@@ -900,6 +974,7 @@ def _train_loop(
                         if diff_loss_ec is not None
                         else {}
                     ),
+                    **ec_stats,
                     "train/t_start": t_start,
                     "train/learning_rate": opt.param_groups[0]["lr"],
                     "train/grad_norm_model": _to_float(grad_norm_model),
@@ -963,6 +1038,32 @@ def _train_loop(
         avg = total_loss / max(n_batches, 1)
         if rank == 0:
             print(f"epoch {epoch + 1}/{args.epochs}  loss={avg:.4f}")
+        if args.error_correction and ec_epoch_seqs > 0:
+            ec_epoch = {
+                "train/ec_epoch_fill_error_rate": ec_epoch_err_pos / max(ec_epoch_masked_pos, 1.0),
+                "train/ec_epoch_seqs_with_visible_error_frac": (
+                    ec_epoch_seen_seqs / float(ec_epoch_seqs)
+                ),
+                "train/ec_epoch_seqs_with_visible_error_current_view_frac": (
+                    ec_epoch_seen_seqs_cur / float(ec_epoch_seqs)
+                ),
+                "train/ec_epoch_seqs_total": float(ec_epoch_seqs),
+                "epoch": epoch + 1,
+            }
+            if rank == 0:
+                print(
+                    f"  [error-correction] stage-1 fill error rate "
+                    f"{ec_epoch_err_pos / max(ec_epoch_masked_pos, 1.0):.4f}"
+                    f" ({int(ec_epoch_err_pos)}/{int(ec_epoch_masked_pos)} filled positions wrong)"
+                    f"  |  sequences seeing a WRONG one-hot in the stage-2 trajectory: "
+                    f"{ec_epoch_seen_seqs}/{ec_epoch_seqs} "
+                    f"({100.0 * ec_epoch_seen_seqs / ec_epoch_seqs:.1f}%)"
+                    f"  |  in the current view: {ec_epoch_seen_seqs_cur}/{ec_epoch_seqs} "
+                    f"({100.0 * ec_epoch_seen_seqs_cur / ec_epoch_seqs:.1f}%)"
+                    + ("  [rank-local counts]" if ddp else "")
+                )
+            if use_wandb:
+                wandb.log(ec_epoch, step=global_step)
         if args.log_timing and n_batches > 0 and rank == 0:
             print(
                 f"  timing_ms (batch avg): sample_all_views={sum_ms_views / n_batches:.2f}  "

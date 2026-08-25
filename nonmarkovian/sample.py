@@ -32,6 +32,31 @@ def _sample_bernoulli(categorical_probs: torch.Tensor, generator: torch.Generato
     return random_uniform_sample < categorical_probs
 
 
+def _simplex_to_tokens(x_t: torch.Tensor, undecided: int = 4) -> torch.Tensor:
+    """``x_t`` ``[B, L, C]`` simplex -> ``[B, L]`` uint8 ids, ``undecided`` where |support| != 1.
+
+    A position counts as *committed* only once its active set has collapsed to a single class --
+    the SLM/new_diff analogue of an MDLM position being unmasked.
+    """
+    active = x_t > 0
+    tok = active.float().argmax(dim=-1)
+    return torch.where(active.sum(dim=-1) == 1, tok, torch.full_like(tok, undecided)).to(
+        "cpu", torch.uint8
+    )
+
+
+def _simplex_to_bitmask(x_t: torch.Tensor) -> torch.Tensor:
+    """``x_t`` ``[B, L, C]`` simplex -> ``[B, L]`` uint8 bitmask of the still-active classes.
+
+    Bit ``c`` is set when class ``c`` is in the position's shortlist. Keeping the whole active set
+    (not just "has it collapsed?") is what lets us ask whether the base finally chosen was ever
+    *excluded* at an earlier step.
+    """
+    active = (x_t > 0).to(torch.uint8)
+    weights = torch.tensor([1, 2, 4, 8], dtype=torch.uint8, device=x_t.device)[: x_t.shape[-1]]
+    return (active * weights).sum(dim=-1).to("cpu", torch.uint8)
+
+
 def _expected_nums(t: torch.Tensor, *, num_classes: int = 4, scheduler: str = "loglinear") -> torch.Tensor:
     if scheduler == "loglinear":
         return torch.clamp(torch.exp(torch.log(torch.tensor(float(num_classes), device=t.device)) * t), min=1.0)
@@ -118,7 +143,9 @@ def sample_sequences(
     generator: torch.Generator | None = None,
     history_mode: str = "trajectory",
     corruption_mode: str = "trajectory",
-) -> torch.Tensor:
+    return_trajectory: bool = False,
+    support_constraint: bool = True,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """SLM-style ``new_diff`` reverse sampling with routed (history-aware) denoiser.
 
     With the default ``history_mode="trajectory"`` the model's ``views`` tensor
@@ -128,7 +155,31 @@ def sample_sequences(
     (noisier) denoising steps -- genuine past history. Slots at indices
     ``< t_start`` stay at the uniform simplex ``1/C`` because those
     less-noisy states haven't been reached yet. See
-    :func:`_init_views_buffer` for the other modes."""
+    :func:`_init_views_buffer` for the other modes.
+
+    ``return_trajectory=True`` also returns three trajectories (uint8, CPU) for the
+    "did it change its mind?" experiment (see ``mind_change_slm``):
+
+    * ``states`` ``[B, T + 2, L]`` -- the simplex collapsed to token ids, with ``4`` marking a
+      position whose active set still has more than one member (i.e. not yet committed). Frame 0
+      is the uniform prior (everything undecided), frame ``i`` is ``x_t`` after step ``i``, and the
+      last frame is the returned argmax sequence.
+    * ``beliefs`` ``[B, T, L]`` -- ``argmax`` of the model's clean-sequence logits at each step,
+      read **before** the support mask, i.e. what the model would say regardless of what the
+      shortlist permits.
+    * ``supports`` ``[B, T + 2, L]`` -- uint8 bitmask of each position's active set (bit ``c`` set
+      when class ``c`` is still a candidate), so one can ask whether the base finally chosen was
+      ever ruled *out* along the way, not merely whether the committed base changed.
+    * ``constrained`` ``[B, T, L]`` -- ``argmax`` of the **support-masked** distribution at each
+      step: the base the step would settle on if the shortlist never re-expanded. This is the
+      counterfactual answer for a position whose eventual base had been ruled out.
+
+    Frame alignment: ``beliefs[i]`` and ``constrained[i]`` are computed from ``states[i]`` /
+    ``supports[i]`` (the state entering step ``i + 1``).
+
+    ``support_constraint=False`` lifts the ``logits.masked_fill(~support_mask, -inf)`` step, which
+    otherwise pins an already-collapsed position to its current base.
+    """
     model.eval()
     num_steps = int(alphas_sample.shape[0])
     vocab = 4
@@ -157,6 +208,13 @@ def sample_sequences(
         bernoulli_scheduler=bernoulli_scheduler,
         generator=generator,
     )
+    frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    pred_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    support_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    constrained_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    if frames is not None:
+        frames.append(_simplex_to_tokens(x_t))
+        support_frames.append(_simplex_to_bitmask(x_t))
     print(bernoulli_scheduler,"bernoulli_scheduler")
     threshold = 6
     print(threshold,"threshold")
@@ -184,11 +242,18 @@ def sample_sequences(
                 views_buffer, t_start, labels=labels, t_cond=float(t[0, 0].item())
             )
 
+        if pred_frames is not None:
+            # Unconstrained belief about x0 at this step: before the support mask pins an
+            # already-collapsed position to the single base its shortlist still allows.
+            pred_frames.append(logits[..., :vocab].argmax(dim=-1).to("cpu", torch.uint8))
+
         support_mask = (seq_in > 0) if seq_in is not None else (x_t > 0)
-        support_mask = (seq_in >0) 
+        support_mask = (seq_in >0)
         support_mask = (x_t > 0)
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
+        if not support_constraint:
+            support_mask = torch.ones_like(support_mask)
         neg_inf = torch.finfo(logits.dtype).min
         logits = logits.masked_fill(~support_mask, neg_inf)
 
@@ -200,6 +265,11 @@ def sample_sequences(
             atol=1e-4,
         ):
             model_prob = model_prob / model_prob.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+
+        if constrained_frames is not None:
+            # argmax *within the current shortlist* (model_prob is already support-masked): the
+            # base this step would settle on if the shortlist never re-expanded.
+            constrained_frames.append(model_prob.argmax(dim=-1).to("cpu", torch.uint8))
 
         hat_x0_ids = model_prob.argmax(dim=-1).clamp(max=vocab - 1)
         one_hot = F.one_hot(hat_x0_ids, num_classes=vocab).to(dtype=torch.bool)
@@ -276,6 +346,10 @@ def sample_sequences(
             x_t = sample_pred.to(dtype=torch.float32)
             x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
 
+        if frames is not None:
+            frames.append(_simplex_to_tokens(x_t))
+            support_frames.append(_simplex_to_bitmask(x_t))
+
     t_last = torch.full((batch, 1), 1.0 / float(num_steps), device=device, dtype=torch.float32)
     views_buffer = _refresh_views_buffer(
         views_buffer,
@@ -300,7 +374,20 @@ def sample_sequences(
         logits_last, _pi, _h, _lb, _seq_in = model(
             views_buffer, 0, labels=labels, t_cond=float(t_last[0, 0].item())
         )
-    return logits_last.argmax(dim=-1).clamp(max=3)
+    final = logits_last.argmax(dim=-1).clamp(max=3)
+    if frames is not None:
+        frames.append(final.to("cpu", torch.uint8))
+        support_frames.append(
+            (torch.ones_like(final, dtype=torch.uint8) << final.to(torch.uint8)).cpu()
+        )
+        return (
+            final,
+            torch.stack(frames, dim=1),
+            torch.stack(pred_frames, dim=1),
+            torch.stack(support_frames, dim=1),
+            torch.stack(constrained_frames, dim=1),
+        )
+    return final
 
 
 def ids_to_strings(x: torch.Tensor, mask_pad: torch.Tensor | None = None) -> list[str]:

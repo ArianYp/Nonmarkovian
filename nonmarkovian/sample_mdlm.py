@@ -51,7 +51,9 @@ def sample_sequences_mdlm(
     history_mode: str = "trajectory",
     corruption_mode: str = "independent",
     independent_threshold: float = 0.6,
-) -> torch.Tensor:
+    return_trajectory: bool = False,
+    support_constraint: bool = True,
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """MDLM ancestral sampling with the routed history-aware denoiser.
 
     The ``views_buffer`` accumulates the running reverse-process simplices exactly as in
@@ -70,6 +72,22 @@ def sample_sequences_mdlm(
       previously-**unmasked token can be masked again** (and vice-versa). This freedom to re-mask /
       undo earlier commitments is the whole point of the non-Markovian variant. (Contrast the
       simple/Markovian model, where once unmasked a token stays unmasked forever.)
+
+    ``return_trajectory=True`` additionally returns two trajectories (uint8, on CPU):
+
+    * ``states`` ``[B, T + 2, L]`` -- the sampled token states (``MASK_IDX`` included): frame 0 is
+      the all-masked start, frame ``i`` (1..T) is ``x`` after reverse step ``i``, and the last
+      frame is the returned sequence after the final clean-up (a duplicate of frame ``T`` when no
+      clean-up was needed).
+    * ``preds`` ``[B, T, L]`` -- the model's **unconstrained** clean-sequence belief
+      ``argmax p_theta(x_0 | x_t)`` at each step, taken *before* the support mask is applied
+      (and after CFG mixing). Frame ``i - 1`` is the belief that produced state frame ``i``.
+
+    ``support_constraint`` (default ``True``) reproduces the shipped behaviour: logits are
+    restricted to the support of the current state, so an already-committed position can only be
+    re-sampled to itself and can never be revised in place -- revision requires a re-mask. Setting
+    it to ``False`` lifts that restriction, letting the non-Markovian corrector phase overwrite a
+    committed token directly.
     """
     model.eval()
     T = int(num_steps)
@@ -90,6 +108,10 @@ def sample_sequences_mdlm(
 
     x = torch.full((batch, seq_len), MASK_IDX, device=device, dtype=torch.long)  # all masked @ t=1
     views_buffer = torch.full((batch, T, seq_len, C), 1.0 / C, device=device, dtype=torch.float32)
+    frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    pred_frames: list[torch.Tensor] | None = [] if return_trajectory else None
+    if frames is not None:
+        frames.append(x.to("cpu", torch.uint8))
     print(independent_threshold, "use_cfg", use_cfg)
     for i in range(1, T + 1):
         t_val = 1.0 - float(i - 1) / float(T)   # current time   (1.0 -> 1/T)
@@ -112,13 +134,20 @@ def sample_sequences_mdlm(
             logits, _pi, _h, _lb, _seq = model(
                 views_buffer, t_start, labels=labels, t_cond=t_val
             )
+        if pred_frames is not None:
+            # Unconstrained belief about x0 at this step (before the support mask freezes
+            # already-committed positions) -- this is what "changing its mind" is measured on.
+            pred_frames.append(logits[..., :C].argmax(dim=-1).to("cpu", torch.uint8))
+
         support_mask = (_seq > 0) if _seq is not None else (x > 0)
-        support_mask = (_seq >0) 
+        support_mask = (_seq >0)
         support_mask = (tokens_to_four_channel_simplex(x) > 0)
 
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
-        neg_inf = torch.finfo(logits.dtype).min   
+        if not support_constraint:
+            support_mask = torch.ones_like(support_mask)
+        neg_inf = torch.finfo(logits.dtype).min
         logits = logits.masked_fill(~support_mask, neg_inf)
         probs = F.softmax(logits, dim=-1)
         #print(probs.shape, "probs.shape")
@@ -150,6 +179,9 @@ def sample_sequences_mdlm(
             do_unmask = is_masked & (u < unmask_prob)
             x = torch.where(do_unmask, sampled, x)
 
+        if frames is not None:
+            frames.append(x.to("cpu", torch.uint8))
+
     # final clean-up: any still-masked positions -> argmax at t -> 0.
     if (x == MASK_IDX).any():
         t_last = 1.0 / float(T)
@@ -167,7 +199,11 @@ def sample_sequences_mdlm(
 
     if old_num_timesteps is not None:
         model.num_timesteps = old_num_timesteps
-    return x.clamp(max=C - 1)
+    x = x.clamp(max=C - 1)
+    if frames is not None:
+        frames.append(x.to("cpu", torch.uint8))
+        return x, torch.stack(frames, dim=1), torch.stack(pred_frames, dim=1)
+    return x
 
 
 def ids_to_strings(x: torch.Tensor, mask_pad: torch.Tensor | None = None) -> list[str]:
