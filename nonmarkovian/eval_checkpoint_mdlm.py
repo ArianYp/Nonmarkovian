@@ -18,15 +18,26 @@ Typical usage::
         --fbcnn_ckpt fbd.ckpt \
         --split test
 
+``--router_ablation {uniform,top1}`` runs the routed checkpoint with the router's weighting over
+history states replaced at inference time (see ``nonmarkovian.router_ablations``); it is the same
+flag, the same implementation and the same semantics as in ``eval_checkpoint.py``.
+
+Add ``--dump_sequences samples_nm.txt`` to also write the generated sequences (one ACGT string
+per line) for the sequence-level metrics — e.g. ``nonmarkovian.motif_metrics --sets``. The dump
+reuses the samples the FBD pass already drew, so it costs nothing extra and the file is exactly
+what the printed FBD scored. ``--dump_real real.txt`` writes the matching real split.
+
 Single-GPU only (no ``torchrun`` needed).
 """
 
 from __future__ import annotations
 
 import argparse
+from argparse import Namespace
 from pathlib import Path
 
 import torch
+from torch.utils.data import DataLoader
 
 from nonmarkovian.device_utils import resolve_device_arg
 from nonmarkovian.eval_checkpoint import (
@@ -34,8 +45,12 @@ from nonmarkovian.eval_checkpoint import (
     _build_loader,
     _build_routed_model,
     _build_simple_model,
+    _dump_real,
+    _suffixed,
+    _write_sequences,
 )
 from nonmarkovian.forward import cosine_alpha_schedule
+from nonmarkovian.router_ablations import ROUTER_ABLATIONS, apply_router_ablation
 from nonmarkovian.validation_mdlm import (
     compute_fbd_routed_mdlm,
     compute_fbd_simple_mdlm,
@@ -52,9 +67,79 @@ def _detect_trainer_mdlm(ckpt: dict) -> str:
     t = str(ckpt.get("trainer", "")).strip().lower()
     if t in ("routed_mdlm", "simple_mdlm"):
         return t
+    if t in ("routed_discrete", "simple_discrete"):
+        # Mirror of the guard in eval_checkpoint._detect_trainer: the architectures are shared, so
+        # without this a Bernoulli checkpoint would sample through the MDLM reverse process.
+        raise SystemExit(
+            f"Checkpoint was trained as {t!r} (Bernoulli / ShortListing), but this is an MDLM "
+            "script. Use nonmarkovian.eval_checkpoint or nonmarkovian.mind_change_slm."
+        )
     state = ckpt.get("model") or {}
     has_router = any(k.startswith("W_phi") or ".W_phi" in k for k in state.keys())
     return "routed_mdlm" if has_router else "simple_mdlm"
+
+
+@torch.no_grad()
+def _generate_sequences_mdlm(
+    trainer: str,
+    model: torch.nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    args: Namespace,
+    *,
+    n: int,
+    num_steps: int,
+    epoch: int,
+) -> torch.Tensor:
+    """Sample ``n`` sequences the same way the MDLM FBD pass does.
+
+    Only used when FBD is skipped; otherwise the dump reuses the FBD pass's own samples so the
+    written sequences are exactly the ones the reported FBD was computed on.
+    """
+    from nonmarkovian.sample_mdlm import sample_sequences_mdlm
+    from nonmarkovian.sample_simple_mdlm import sample_sequences_simple_mdlm
+    from nonmarkovian.validation import _use_conditional_sampling_labels
+
+    model.eval()
+    use_labs = _use_conditional_sampling_labels(args)
+    gen = torch.Generator(device=device)
+    gen.manual_seed(int(args.seed) + 424242 + int(epoch) * 100003)
+    seq_len = int(getattr(args, "max_len", 500))
+    scheduler = str(getattr(args, "bernoulli_scheduler", "loglinear"))
+    parts: list[torch.Tensor] = []
+    collected = 0
+    for batch in loader:
+        if collected >= n:
+            break
+        take = min(int(batch["x0"].shape[0]), n - collected)
+        labels = batch.get("label")
+        lab = labels[:take].to(device) if (use_labs and labels is not None) else None
+        if trainer == "routed_mdlm":
+            g = sample_sequences_mdlm(
+                model, num_steps, int(take), seq_len, device,
+                num_timesteps_train=int(args.num_timesteps),
+                labels=lab,
+                guidance_scale=float(getattr(args, "guidance_scale", 0.0)),
+                scheduler=scheduler,
+                generator=gen,
+                history_mode=str(getattr(args, "history_mode", "trajectory")),
+                corruption_mode=str(getattr(args, "corruption_mode", "independent")),
+                independent_threshold=float(getattr(args, "independent_threshold", 0.6)),
+            )
+        else:
+            g = sample_sequences_simple_mdlm(
+                model, num_steps, int(take), seq_len, device,
+                num_timesteps_train=int(args.num_timesteps),
+                labels=lab,
+                guidance_scale=float(getattr(args, "guidance_scale", 0.0)),
+                scheduler=scheduler,
+                generator=gen,
+            )
+        parts.append(g.detach().to("cpu", torch.uint8))
+        collected += take
+    if not parts:
+        raise SystemExit("--dump_sequences: the loader yielded no batches to sample against.")
+    return torch.cat(parts, dim=0)[:n]
 
 
 def main() -> None:
@@ -121,6 +206,39 @@ def main() -> None:
         default=0.0,
         help="Classifier-free guidance scale w applied at sampling (0 = pure conditional).",
     )
+    p.add_argument(
+        "--router_ablation",
+        type=str,
+        default="none",
+        choices=ROUTER_ABLATIONS,
+        help=(
+            "Routed-only, inference-only ablation of the router's weighting over history states "
+            "(see nonmarkovian.router_ablations). 'uniform' = 1/K weights (history kept, "
+            "selection destroyed); 'top1' = hard argmax pick (selection kept, blending removed)."
+        ),
+    )
+    p.add_argument(
+        "--dump_sequences",
+        type=str,
+        default="",
+        help=(
+            "Write the generated sequences to this .txt (one ACGT sequence per line) for "
+            "nonmarkovian.motif_metrics --sets. Reuses the FBD pass's own samples; with "
+            "--fbd_no_history the uniform-history pass also lands in <stem>_no_history.txt."
+        ),
+    )
+    p.add_argument(
+        "--dump_real",
+        type=str,
+        default="",
+        help="Also write the real split sequences to this .txt (usable as motif_metrics --real).",
+    )
+    p.add_argument(
+        "--n_dump",
+        type=int,
+        default=0,
+        help="How many sequences to generate when --skip_fbd is set. 0 = whole split.",
+    )
     cli = p.parse_args()
 
     device = resolve_device_arg(cli.device)
@@ -186,6 +304,14 @@ def main() -> None:
             print(f"[eval] warning: {len(unexpected)} unexpected keys (first 5): {unexpected[:5]}")
     model.eval()
 
+    # --- optional inference-time router ablation (routed checkpoints only) ---
+    ablation = str(cli.router_ablation).strip().lower()
+    if ablation != "none":
+        if trainer != "routed_mdlm":
+            raise SystemExit("--router_ablation only applies to routed_mdlm checkpoints.")
+        apply_router_ablation(model, ablation)
+        print(f"[eval-mdlm] router ablation active: {ablation}")
+
     # --- alphas for the reverse process (only its length matters for MDLM: = #reverse steps) ---
     nts = int(args.num_timesteps_sample)
     alphas_sample = ckpt.get("alphas_sample")
@@ -228,7 +354,8 @@ def main() -> None:
         f"scheduler={getattr(args, 'bernoulli_scheduler', 'loglinear')}  "
         f"history_mode={getattr(args, 'history_mode', 'n/a') if trainer == 'routed_mdlm' else 'n/a'}  "
         f"guidance_scale={float(args.guidance_scale)}  "
-        f"fbcnn={'yes' if fbcnn is not None else 'no'}"
+        f"router_ablation={ablation}  "
+        f"fbcnn={'yes' if fbcnn is not None else 'no'}  "
         f"trainer={trainer}"
     )
 
@@ -250,6 +377,12 @@ def main() -> None:
                 print(f"  {k}: {vmetrics[k]:.4f}")
 
     # --- FBD (MDLM ancestral sampling) ---
+    dump_path = Path(cli.dump_sequences) if cli.dump_sequences else None
+    # Collect the FBD pass's own samples when a dump was asked for, so the written sequences are
+    # exactly the ones the printed FBD scored (no second, differently-seeded sampling run).
+    gen_seqs: list[torch.Tensor] | None = [] if dump_path is not None else None
+    gen_seqs_noh: list[torch.Tensor] | None = None
+    epoch = int(ck_epoch) if ck_epoch is not None else 0
     if not cli.skip_fbd:
         n_fbd = int(cli.n_fbd) if cli.n_fbd > 0 else len(loader.dataset)
         if n_fbd < 2:
@@ -257,11 +390,11 @@ def main() -> None:
         else:
             tag = "fbd_fbcnn" if fbcnn is not None else "fbd"
             seq_len = int(getattr(args, "max_len", 500))
-            epoch = int(ck_epoch) if ck_epoch is not None else 0
             if trainer == "routed_mdlm":
                 fbd = compute_fbd_routed_mdlm(
                     model, loader, alphas_sample, device, args,
                     n_samples=n_fbd, seq_len=seq_len, epoch=epoch, fbcnn=fbcnn,
+                    collect_sequences=gen_seqs,
                 )
                 print(f"[eval-mdlm] {tag}: {float(fbd):.4f}  (n_samples={n_fbd})")
                 if cli.fbd_no_history:
@@ -269,17 +402,43 @@ def main() -> None:
 
                     args_noh = copy.copy(args)
                     args_noh.history_mode = "uniform"
+                    gen_seqs_noh = [] if dump_path is not None else None
                     fbd_noh = compute_fbd_routed_mdlm(
                         model, loader, alphas_sample, device, args_noh,
                         n_samples=n_fbd, seq_len=seq_len, epoch=epoch, fbcnn=fbcnn,
+                        collect_sequences=gen_seqs_noh,
                     )
                     print(f"[eval-mdlm] {tag}_no_history: {float(fbd_noh):.4f}  (n_samples={n_fbd})")
             else:
                 fbd = compute_fbd_simple_mdlm(
                     model, loader, alphas_sample, device, args,
                     n_samples=n_fbd, seq_len=seq_len, epoch=epoch, fbcnn=fbcnn,
+                    collect_sequences=gen_seqs,
                 )
                 print(f"[eval-mdlm] {tag}: {float(fbd):.4f}  (n_samples={n_fbd})")
+
+    # --- dump sequences for downstream sequence-level metrics (motif_metrics, ...) ---
+    n_dump = int(cli.n_dump) if cli.n_dump > 0 else (
+        int(cli.n_fbd) if cli.n_fbd > 0 else len(loader.dataset)
+    )
+    if dump_path is not None:
+        if gen_seqs:
+            _write_sequences(dump_path, torch.cat(gen_seqs, dim=0)[:n_dump])
+        else:
+            # --skip_fbd (or n_fbd < 2): nothing was generated above, so sample here.
+            _write_sequences(
+                dump_path,
+                _generate_sequences_mdlm(
+                    trainer, model, loader, device, args,
+                    n=n_dump, num_steps=int(alphas_sample.shape[0]), epoch=epoch,
+                ),
+            )
+        if gen_seqs_noh:
+            _write_sequences(
+                _suffixed(dump_path, "_no_history"), torch.cat(gen_seqs_noh, dim=0)[:n_dump]
+            )
+    if cli.dump_real:
+        _dump_real(loader, Path(cli.dump_real), n_dump)
 
 
 if __name__ == "__main__":

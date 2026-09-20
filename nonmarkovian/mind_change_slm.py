@@ -78,6 +78,7 @@ from nonmarkovian.forward import cosine_alpha_schedule
 from nonmarkovian.mind_change_core import (
     NUC,
     UNDECIDED,
+    build_revision_variants,
     BeliefVsStateStats,
     MindChangeStats,
     EmbeddingProximity,
@@ -227,36 +228,15 @@ def build_recovery_variants(
         # on a different base than the one it FIRST committed to, put the first commitment back --
         # i.e. what the model would have emitted had it never revised a commitment. Gets its own
         # count-matched random-position null, since this set is a different size from the recoveries.
-        st = states.to("cpu")
-        first = torch.full((B, L), 255, dtype=torch.uint8)
-        for f in range(st.shape[1]):
-            cur = st[:, f]
-            com = cur != UNDECIDED
-            first = torch.where(com & (first == 255), cur, first)
-        switched = (first != 255) & (first.long() != final)
-        k_sw = switched.sum(dim=1)
-
-        r2 = torch.rand(B, L, generator=gen)
-        rand_pos_sw = r2.argsort(dim=1).argsort(dim=1) < k_sw.unsqueeze(1)
-        c_any2 = _pick_excluding(excl_final, gen, num_classes).reshape(B, L).long()
-
-        # Same positions, but an arbitrary *third* base -- neither the first commitment nor the
-        # final one. Separates "the model revised this position" from "the model revised it to the
-        # right base": if the actual output beats this, the specific choice carried information.
-        first_safe = torch.where(first == 255, final.to(torch.uint8), first).long()
-        excl_two = torch.zeros(B * L, num_classes, dtype=torch.bool)
-        ar_bl = torch.arange(B * L)
-        excl_two[ar_bl, first_safe.reshape(-1)] = True
-        excl_two[ar_bl, final.reshape(-1)] = True
-        c_third = _pick_excluding(excl_two, gen, num_classes).reshape(B, L).long()
-
+        # Shared with the MDLM driver, which has no shortlists and so runs these arms alone.
+        rev = build_revision_variants(states, final, gen, num_classes)
         out.update(
             {
-                "first_commitment": torch.where(switched, first.long(), final),
-                "random_positions_switch": torch.where(rand_pos_sw, c_any2, final),
-                "random_third_switch": torch.where(switched, c_third, final),
-                "switched": switched,
-                "k_switch": k_sw,
+                "first_commitment": rev["first_commitment"],
+                "random_positions_switch": rev["random_positions_switch"],
+                "random_third_switch": rev["random_third_switch"],
+                "switched": rev["switched"],
+                "k_switch": rev["k_switch"],
             }
         )
     return out

@@ -80,6 +80,12 @@ Usage::
         --score_revisions --fbcnn_ckpt fbd_mel.ckpt --fbcnn_num_cls 47 \
         --out_dir logs/mind_change --tag nm
 
+    # dump sequences for nonmarkovian.motif_metrics (labels drawn from --split)
+    python -m nonmarkovian.mind_change_mdlm \
+        --checkpoint checkpoints/routed_mdlm.best_fbd.pt \
+        --n_samples 8192 --batch 256 --split test \
+        --dump_sequences logs/motifs/mdlm_nonmarkov.txt --tag nm_dump
+
     # Markovian control (expect all-zero switch counts)
     python -m nonmarkovian.mind_change_mdlm \
         --checkpoint checkpoints/routed_mdlm.best_fbd.pt \
@@ -112,8 +118,10 @@ from nonmarkovian.mind_change_core import (
     BeliefVsStateStats,
     MindChangeStats,
     RevisionScorer,
+    VariantFBD,
+    build_revision_variants,
 )
-from nonmarkovian.vocab import MASK_IDX
+from nonmarkovian.vocab import IDX_TO_TOKEN, MASK_IDX
 
 def main() -> None:
     p = argparse.ArgumentParser(
@@ -157,6 +165,12 @@ def main() -> None:
         help="Also dump the raw token trajectories of the first N sequences (.pt).",
     )
     p.add_argument(
+        "--dump_sequences", type=str, default="",
+        help="Write the generated sequences (one ACGT line each) to this path, e.g. for "
+        "nonmarkovian.motif_metrics. Conditional checkpoints get labels drawn from --split, so the "
+        "class mix matches the real data.",
+    )
+    p.add_argument(
         "--free_support", action="store_true",
         help="Routed-only: drop the support mask so the corrector phase may overwrite an "
         "already-committed token in place (default keeps the shipped behaviour, where a "
@@ -174,6 +188,22 @@ def main() -> None:
     p.add_argument(
         "--score_max_events", type=int, default=0,
         help="Cap on revision events scored per batch (0 = all).",
+    )
+    p.add_argument(
+        "--score_revision_fbd", "--score_recoveries", dest="score_revision_fbd",
+        action="store_true",
+        help="Judge the revisions *distributionally*: revert every switched position to its first "
+        "commitment and compare FBD(real, reverted) against FBD(real, actual), with a "
+        "count-matched random-position null and a random-third-token arm. Needs --fbcnn_ckpt. "
+        "This is the criterion that survives a positive control -- the per-sequence "
+        "--score_revisions numbers do not. Unlike --score_revisions it needs no labels. "
+        "(The SLM driver's shortlist-recovery arms have no MDLM analogue, so --score_recoveries "
+        "is accepted as an alias and runs these revision arms.)",
+    )
+    p.add_argument("--fbd_boot", type=int, default=200, help="Paired bootstrap draws for the FBD deltas.")
+    p.add_argument(
+        "--n_ref", type=int, default=2048,
+        help="Real sequences used as the FBD reference cloud for --score_revision_fbd.",
     )
     p.add_argument("--no_strict_load", action="store_true")
     cli = p.parse_args()
@@ -224,13 +254,12 @@ def main() -> None:
     use_labs = _use_conditional_sampling_labels(args)
 
     scorer = None
-    if cli.score_revisions:
+    fbd_scorer = None
+    var_gen = torch.Generator().manual_seed(int(cli.seed) + 8675309)
+    if cli.score_revisions or cli.score_revision_fbd:
         if not cli.fbcnn_ckpt.strip():
-            raise SystemExit("--score_revisions needs --fbcnn_ckpt (e.g. fbd_mel.ckpt).")
-        if not use_labs:
             raise SystemExit(
-                "--score_revisions scores log p(target class | sequence), so it needs a "
-                "conditional checkpoint sampled with labels (drop --unconditional)."
+                "--score_revisions / --score_revision_fbd need --fbcnn_ckpt (e.g. fbd.ckpt)."
             )
         from nonmarkovian.fbcnn import load_fbcnn_classifier
 
@@ -239,15 +268,47 @@ def main() -> None:
             num_cls=int(cli.fbcnn_num_cls or 0), num_cnn_stacks=int(cli.fbcnn_stacks or 0),
         )
 
-        @torch.no_grad()
-        def _score_fn(seqs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-            s = seqs.to(device)
-            t = torch.zeros(s.shape[0], device=device, dtype=torch.float32)
-            logits, _emb = fbcnn(s, t, cls=None, return_embedding=True)
-            lp = torch.log_softmax(logits.float(), dim=-1)
-            return lp.gather(1, labels.view(-1, 1).to(device)).squeeze(1)
+        if cli.score_revisions:
+            if not use_labs:
+                raise SystemExit(
+                    "--score_revisions scores log p(target class | sequence), so it needs a "
+                    "conditional checkpoint sampled with labels (drop --unconditional). "
+                    "--score_revision_fbd works without labels."
+                )
 
-        scorer = RevisionScorer(_score_fn, seed=int(cli.seed))
+            @torch.no_grad()
+            def _score_fn(seqs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+                s = seqs.to(device)
+                t = torch.zeros(s.shape[0], device=device, dtype=torch.float32)
+                logits, _emb = fbcnn(s, t, cls=None, return_embedding=True)
+                lp = torch.log_softmax(logits.float(), dim=-1)
+                return lp.gather(1, labels.view(-1, 1).to(device)).squeeze(1)
+
+            scorer = RevisionScorer(_score_fn, seed=int(cli.seed))
+
+        if cli.score_revision_fbd:
+            from nonmarkovian.metrics import fbcnn_embed_sequences
+
+            @torch.no_grad()
+            def _embed(seqs: torch.Tensor) -> torch.Tensor:
+                return fbcnn_embed_sequences(fbcnn, seqs.to(device)).cpu()
+
+            # Reference cloud: real sequences from the eval split, embedded the same way.
+            ref_loader = _build_loader(
+                cfg, cli.split, batch_size=256,
+                dfm_root_override=cli.dfm_enhancer, melanoma_override=cli.dfm_melanoma,
+            )
+            ref_parts, got = [], 0
+            for rb in ref_loader:
+                if got >= int(cli.n_ref):
+                    break
+                take_r = min(int(rb["x0"].shape[0]), int(cli.n_ref) - got)
+                ref_parts.append(_embed(rb["x0"][:take_r].long()))
+                got += take_r
+            ref_e = torch.cat(ref_parts)
+            print(f"[mind-change] reference embeddings: {tuple(ref_e.shape)} from {got} "
+                  f"real {cli.split} sequences")
+            fbd_scorer = VariantFBD(_embed, ref_e)
 
     label_iter = None
     if use_labs and cli.label < 0:
@@ -273,6 +334,7 @@ def main() -> None:
     gen.manual_seed(int(cli.seed))
     kept_traj: list[torch.Tensor] = []
     kept_pred: list[torch.Tensor] = []
+    dumped: list[str] = []
 
     collected = 0
     while collected < int(cli.n_samples):
@@ -332,10 +394,15 @@ def main() -> None:
                 traj, x_final, labels,
                 max_events=int(cli.score_max_events), seq_offset=collected,
             )
+        if fbd_scorer is not None:
+            fbd_scorer.update(build_revision_variants(traj, x_final, var_gen))
         if cli.save_trajectories > 0 and sum(t.shape[0] for t in kept_traj) < cli.save_trajectories:
             need = cli.save_trajectories - sum(t.shape[0] for t in kept_traj)
             kept_traj.append(traj[:need].clone())
             kept_pred.append(pred[:need].clone())
+        if cli.dump_sequences:
+            for row in x_final.detach().cpu().tolist():
+                dumped.append("".join(IDX_TO_TOKEN[int(t)] for t in row))
         collected += take
         print(f"[mind-change] {collected}/{cli.n_samples} sequences", flush=True)
 
@@ -346,6 +413,8 @@ def main() -> None:
     }
     if scorer is not None:
         summary["revision_quality"] = scorer.summary()
+    if fbd_scorer is not None:
+        summary["revision_fbd"] = fbd_scorer.summary(n_boot=int(cli.fbd_boot))
     summary["config"] = {
         "checkpoint": str(ckpt_path.resolve()),
         "trainer": trainer,
@@ -361,6 +430,13 @@ def main() -> None:
         "split": cli.split,
         "support_constraint": not bool(cli.free_support),
     }
+
+    if cli.dump_sequences:
+        dump_path = Path(cli.dump_sequences)
+        dump_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(dump_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(dumped) + "\n")
+        print(f"[mind-change] wrote {len(dumped)} sequences to {dump_path}")
 
     out_dir = Path(cli.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -509,6 +585,49 @@ def main() -> None:
                 "yet negligible in magnitude. Confirm in bulk (FBD with revision on vs off) "
                 "before concluding the revisions matter."
             )
+
+    rf = summary.get("revision_fbd") or {}
+    if rf:
+        print("\n[mind-change] === DID THE REVISIONS HELP? "
+              "(revert switched positions to their FIRST commitment) [FBD] ===")
+        print(f"  {rf['n_sequences']} generated vs {rf['n_real_reference']} real sequences; "
+              f"{rf['bootstrap']}")
+        print(f"  mean positions reverted / sequence: "
+              f"{rf['mean_positions_reverted_per_sequence']:.1f}")
+        for k, name in (
+            ("actual", "FBD(real, actual)"),
+            ("first_commitment", "FBD(real, first_commitment)"),
+            ("random_third_switch", "FBD(real, random_third_switch)"),
+            ("random_positions_switch", "FBD(real, random_positions_sw)"),
+        ):
+            print(f"    {name:<32} = {rf['fbd'][k]:.4f}")
+        print("  lower FBD = closer to real, so a POSITIVE delta means reverting made it worse,")
+        print("  i.e. the revisions were helping.")
+        for k, name in (
+            ("first_commitment", "vs the position's first commitment"),
+            ("random_third_switch", "vs a random 3rd token (not 1st, not final)"),
+            ("random_positions_switch", "null: same count, random positions"),
+        ):
+            b = rf[f"delta_fbd_{k}"]
+            lo, hi = b["ci95"]
+            print(f"  {name:<40}{b['mean']:+10.4f}  CI95=[{lo:+.4f}, {hi:+.4f}]  "
+                  f"(bootstrap draws > 0: {b['frac_boot_positive'] * 100:.0f}%)")
+        nb = rf["delta_fbd_random_positions_switch"]
+        fc = rf["delta_fbd_first_commitment"]
+        if nb["ci95"][0] <= 0.0:
+            print("  !! the null does not raise FBD: even deliberate damage is not detected, so "
+                  "this measurement cannot judge the corrector. Check that the sampler matches the "
+                  "one your reported FBD came from, and raise --n_samples (FBD needs enough "
+                  "sequences for a stable covariance) before reading the rows above.")
+        elif fc["ci95"][0] > 0:
+            print("  -> keeping the first commitment would have been WORSE: the revisions improve "
+                  "the sample distribution.")
+        elif fc["ci95"][1] < 0:
+            print("  -> keeping the first commitment would have been BETTER: the revisions are "
+                  "hurting sample quality.")
+        else:
+            print("  -> the revisions have no resolvable effect on the distribution (the null does "
+                  "register, so the measurement itself works).")
 
     if summary["state"]["mean_switches_per_position"] == 0.0:
         if trainer != "routed_mdlm":

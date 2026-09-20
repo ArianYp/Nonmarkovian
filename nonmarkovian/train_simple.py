@@ -236,7 +236,7 @@ def _parse_train_simple_args() -> argparse.Namespace:
     p.add_argument(
         "--fbcnn_stacks",
         type=int,
-        default=1,
+        default=0,
         help="CNNModel stacks (5 conv layers per stack). Fly-brain FBCNN.ckpt has 1 stack; "
         "using 4 with that ckpt leaves most weights random and FBD near 0.",
     )

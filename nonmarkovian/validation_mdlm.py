@@ -309,9 +309,14 @@ def compute_fbd_routed_mdlm(
     seq_len: int,
     epoch: int,
     fbcnn: "CNNModel | None" = None,
+    collect_sequences: list[torch.Tensor] | None = None,
 ) -> float:
     """FBD for the routed MDLM model — symmetric to ``compute_fbd_routed`` but MDLM-sampled.
-    ``alphas`` is used only for its length (= number of reverse steps)."""
+    ``alphas`` is used only for its length (= number of reverse steps).
+
+    ``collect_sequences``: if given, every generated batch is appended to it as a CPU uint8
+    ``[B, L]`` tensor, so a caller can keep the sequences FBD actually scored instead of
+    re-sampling them. Only this rank's shard is collected."""
     model.eval()
     encoder = model.encoder
     use_labs = _use_conditional_sampling_labels(args)
@@ -353,6 +358,8 @@ def compute_fbd_routed_mdlm(
             corruption_mode=str(getattr(args, "corruption_mode", "independent")),
             independent_threshold=float(getattr(args, "independent_threshold", 0.6)),
         )
+        if collect_sequences is not None:
+            collect_sequences.append(g.detach().to("cpu", torch.uint8))
         if fbcnn is not None:
             gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:
@@ -374,8 +381,11 @@ def compute_fbd_simple_mdlm(
     seq_len: int,
     epoch: int,
     fbcnn: "CNNModel | None" = None,
+    collect_sequences: list[torch.Tensor] | None = None,
 ) -> float:
-    """FBD for the simple MDLM model — symmetric to ``compute_fbd_simple`` but MDLM-sampled."""
+    """FBD for the simple MDLM model — symmetric to ``compute_fbd_simple`` but MDLM-sampled.
+
+    ``collect_sequences`` behaves as in :func:`compute_fbd_routed_mdlm`."""
     model.eval()
     encoder = model.encoder
     use_labs = _use_conditional_sampling_labels(args)
@@ -414,6 +424,8 @@ def compute_fbd_simple_mdlm(
             scheduler=scheduler,
             generator=gen,
         )
+        if collect_sequences is not None:
+            collect_sequences.append(g.detach().to("cpu", torch.uint8))
         if fbcnn is not None:
             gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:

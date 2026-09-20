@@ -609,16 +609,21 @@ def sample_promoter(
         t3        = torch.full((B, 1, 1), t_val, device=device, dtype=torch.float32)
         nominator   = _expected_nums(t3 - 1.0 / T, C, scheduler) - 1.0
         denominator = torch.clamp(_expected_nums(t3, C, scheduler) - 1.0, min=1e-8)
-        weight    = torch.clamp(nominator / denominator, min=0.0, max=1.0)
-        predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
+        #weight    = torch.clamp(nominator / denominator, min=0.0, max=1.0)
+        
+        #predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
 
         # Bernoulli sample with (x_t > 0) support mask — identical to sample.py.
         # 'independent' mode drops the mask in the noisy region so positions can
         # re-activate channels; 'trajectory' always keeps the mask.
         support_bern = (x_t > 0)
         if corruption_mode == "independent" and i > independent_threshold * T:
+            weight = torch.clamp(nominator/(vocab_size-1) + 0.3, min=0.0, max=1.0)
+            predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
             sample_pred = _sample_bernoulli(predicted, generator)
         else:
+            weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
+            predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
             sample_pred = _sample_bernoulli(predicted, generator) & support_bern
         sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)             # [B, L, 1]
         fallback      = F.one_hot(predicted.argmax(dim=-1), num_classes=C).to(dtype=torch.bool)

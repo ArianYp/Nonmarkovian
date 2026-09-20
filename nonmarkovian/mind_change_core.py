@@ -434,6 +434,145 @@ class RevisionScorer:
         }
 
 
+def build_revision_variants(
+    states: torch.Tensor,
+    final: torch.Tensor,
+    gen: torch.Generator,
+    num_classes: int = 4,
+) -> dict:
+    """The sequence sets that answer *did the revisions help?*, per batch.
+
+    Backbone-agnostic: it reads only the state trajectory ``[B, F, L]`` (``UNDECIDED`` marking an
+    uncommitted position), so it works for MDLM (``[M]`` frames) and SLM (un-collapsed shortlists)
+    alike. A position is *switched* when the token it ends on differs from the one it **first**
+    committed to.
+
+    ``actual``                   what the model output.
+    ``first_commitment``         every switched position put back to its first commitment, i.e.
+                                 what the model would have emitted had it never revised.
+    ``random_third_switch``      the same positions set to an arbitrary *third* token (neither the
+                                 first commitment nor the final one) -- separates "it revised here"
+                                 from "it revised to the right token".
+    ``random_positions_switch``  the same *number* of random other positions given a random other
+                                 token: the calibration null. Damage must raise FBD, or the
+                                 measurement is not working.
+
+    Also returns ``switched`` ``[B, L]`` and the per-sequence count ``k_switch``.
+    """
+    st = states.to("cpu")
+    final = final.detach().to("cpu").long()
+    B, L = final.shape
+
+    first = torch.full((B, L), _NO_COMMIT, dtype=torch.uint8)
+    for f in range(st.shape[1]):
+        cur = st[:, f]
+        com = cur != UNDECIDED
+        first = torch.where(com & (first == _NO_COMMIT), cur, first)
+    switched = (first != _NO_COMMIT) & (first.long() != final)
+    k_sw = switched.sum(dim=1)
+
+    excl_final = torch.zeros(B * L, num_classes, dtype=torch.bool)
+    ar_bl = torch.arange(B * L)
+    excl_final[ar_bl, final.reshape(-1)] = True
+
+    r = torch.rand(B, L, generator=gen)
+    rand_pos = r.argsort(dim=1).argsort(dim=1) < k_sw.unsqueeze(1)
+    c_any = _pick_excluding(excl_final, gen, num_classes).reshape(B, L).long()
+
+    first_safe = torch.where(first == _NO_COMMIT, final.to(torch.uint8), first).long()
+    excl_two = excl_final.clone()
+    excl_two[ar_bl, first_safe.reshape(-1)] = True
+    c_third = _pick_excluding(excl_two, gen, num_classes).reshape(B, L).long()
+
+    return {
+        "actual": final,
+        "first_commitment": torch.where(switched, first.long(), final),
+        "random_third_switch": torch.where(switched, c_third, final),
+        "random_positions_switch": torch.where(rand_pos, c_any, final),
+        "switched": switched,
+        "k_switch": k_sw,
+    }
+
+
+class VariantFBD:
+    """Paired FBD between a real reference cloud and each of several counterfactual sequence sets.
+
+    Per-sequence scoring with the FBCNN classifier does not survive a positive control (its class
+    head puts real held-out sequences below chance, and embedding proximity ranks randomised real
+    sequences above real ones, because noise drags a mean-pooled embedding toward the dataset
+    centroid). The **distributional** use does, which is what this measures::
+
+        FBD(real, actual)  vs  FBD(real, variant)
+
+    **Lower FBD is better**, so ``delta = FBD(variant) - FBD(actual) > 0`` means the thing the
+    variant undoes was moving the samples toward the real distribution. The interval comes from a
+    paired bootstrap over sequences -- the same resampled indices for every variant, so the
+    comparison is not confounded by which sequences got drawn.
+
+    ``update`` takes the dict a variant builder returns; any key whose value is not a ``[B, L]``
+    long tensor of token ids (``switched``, ``k_switch``, ...) is ignored, and ``count_key`` names
+    the per-sequence count to report.
+    """
+
+    def __init__(self, embed_fn, real_embeddings: torch.Tensor, count_key: str = "k_switch") -> None:
+        self.embed_fn = embed_fn
+        self.real = real_embeddings.detach().cpu().double().numpy()
+        self.count_key = str(count_key)
+        self.emb: dict[str, list] = {}
+        self.counts: list[int] = []
+
+    @torch.no_grad()
+    def update(self, variants: dict) -> None:
+        if "actual" not in variants:
+            raise ValueError("VariantFBD.update needs an 'actual' key to compare against.")
+        ref = variants["actual"]
+        if self.count_key in variants:
+            self.counts.extend(variants[self.count_key].tolist())
+        for name, seqs in variants.items():
+            # Skip the bookkeeping entries (bool masks, counts) -- only id sequences are embedded.
+            if not torch.is_tensor(seqs) or seqs.shape != ref.shape or seqs.dtype == torch.bool:
+                continue
+            self.emb.setdefault(name, []).append(self.embed_fn(seqs).detach().cpu().double())
+
+    def summary(self, n_boot: int = 200) -> dict:
+        from nonmarkovian.metrics import frechet_distance_np
+
+        if not self.emb:
+            return {}
+        E = {k: torch.cat(vs).numpy() for k, vs in self.emb.items()}
+        n = E["actual"].shape[0]
+        fbd = {k: float(frechet_distance_np(self.real, v)) for k, v in E.items()}
+
+        boot_gen = torch.Generator().manual_seed(20260812)
+        deltas: dict[str, list] = {k: [] for k in E if k != "actual"}
+        for _ in range(int(n_boot)):
+            pick = torch.randint(n, (n,), generator=boot_gen).numpy()
+            f_act = float(frechet_distance_np(self.real, E["actual"][pick]))
+            for k in deltas:
+                deltas[k].append(float(frechet_distance_np(self.real, E[k][pick])) - f_act)
+
+        def ci95(vals):
+            v = sorted(vals)
+            return [v[max(int(0.025 * len(v)) - 1, 0)], v[min(int(0.975 * len(v)), len(v) - 1)]]
+
+        out = {
+            "n_sequences": n,
+            "n_real_reference": int(self.real.shape[0]),
+            "mean_positions_reverted_per_sequence": (
+                float(sum(self.counts) / len(self.counts)) if self.counts else 0.0
+            ),
+            "bootstrap": f"{int(n_boot)} paired resamples over sequences",
+            "fbd": fbd,
+        }
+        for k, vals in deltas.items():
+            out[f"delta_fbd_{k}"] = {
+                "mean": float(sum(vals) / len(vals)),
+                "ci95": ci95(vals),
+                "frac_boot_positive": float(sum(1 for x in vals if x > 0)) / len(vals),
+            }
+        return out
+
+
 class BeliefVsStateStats:
     """How often the model's belief contradicts a token the sampler has *already* committed.
 

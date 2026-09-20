@@ -96,6 +96,7 @@ def generate_sequences(args, device) -> list[str]:
                 model, num_steps, bs, args.seq_len, device,
                 generator=g, history_mode=args.history_mode,
                 corruption_mode=args.corruption_mode, release_threshold=args.release_threshold,
+                bias=args.bias,
             )
     else:
         from nonmarkovian.sample_simple_protein import _build_model_from_ckpt, sample_simple_protein
@@ -359,6 +360,11 @@ def main() -> None:
     p.add_argument("--history_mode", type=str, default="trajectory", choices=("trajectory", "uniform"))
     p.add_argument("--corruption_mode", type=str, default="independent", choices=("independent", "trajectory"))
     p.add_argument("--release_threshold", type=int, default=6)
+    p.add_argument(
+        "--bias", type=float, default=0.1,
+        help="Additive floor on the corrector-phase re-activation rate (routed + independent "
+             "only). 0 = schedule-exact re-corruption; sample.py uses 0.1 for DNA.",
+    )
     p.add_argument("--device", type=str, default="auto")
     p.add_argument("--seed", type=int, default=42)
     # metrics

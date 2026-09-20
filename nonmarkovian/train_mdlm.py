@@ -167,7 +167,7 @@ def _parse_train_args() -> argparse.Namespace:
     p.add_argument(
         "--independent_threshold",
         type=float,
-        default=0.8,
+        default=0,
         help="Fraction of reverse steps after which the carry-over constraint is dropped in "
         "--corruption_mode independent (non-Markovian revision phase). Ignored for trajectory.",
     )

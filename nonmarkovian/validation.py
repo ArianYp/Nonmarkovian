@@ -504,10 +504,16 @@ def compute_fbd_routed(
     seq_len: int,
     epoch: int,
     fbcnn: "CNNModel | None" = None,
+    collect_sequences: list[torch.Tensor] | None = None,
 ) -> float:
     """Distributed-aware FBD: each rank embeds its shard of ``val_loader`` and generates its
     share of synthetic samples; embeddings are all-gathered before the Fréchet distance is
-    computed on rank 0 (NaN on other ranks)."""
+    computed on rank 0 (NaN on other ranks).
+
+    ``collect_sequences``: if given, every generated batch is appended to it as a CPU uint8
+    ``[B, L]`` tensor, so a caller can keep the sequences FBD actually scored instead of
+    re-sampling them. Only this rank's shard is collected (the embeddings, not the sequences,
+    are what gets all-gathered)."""
     from nonmarkovian.sample import sample_sequences
 
     model.eval()
@@ -549,6 +555,8 @@ def compute_fbd_routed(
             history_mode=str(getattr(args, "history_mode", "trajectory")),
             corruption_mode=str(getattr(args, "corruption_mode", "trajectory")),
         )
+        if collect_sequences is not None:
+            collect_sequences.append(g.detach().to("cpu", torch.uint8))
         if fbcnn is not None:
             gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:
@@ -594,9 +602,10 @@ def compute_fbd_simple(
     seq_len: int,
     epoch: int,
     fbcnn: "CNNModel | None" = None,
+    collect_sequences: list[torch.Tensor] | None = None,
 ) -> float:
     """Distributed-aware FBD for the non-routed (simple) model — symmetric to
-    :func:`compute_fbd_routed`."""
+    :func:`compute_fbd_routed`, ``collect_sequences`` included."""
     from nonmarkovian.sample_simple import sample_sequences_simple
 
     model.eval()
@@ -635,6 +644,8 @@ def compute_fbd_simple(
             bernoulli_scheduler=getattr(args, "bernoulli_scheduler", "loglinear"),
             generator=gen,
         )
+        if collect_sequences is not None:
+            collect_sequences.append(g.detach().to("cpu", torch.uint8))
         if fbcnn is not None:
             gen_parts.append(fbcnn_embed_sequences(fbcnn, g))
         else:

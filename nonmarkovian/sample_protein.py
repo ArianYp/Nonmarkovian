@@ -36,14 +36,20 @@ def sample_protein_sequences(
     history_mode: str = "trajectory",
     corruption_mode: str = "independent",
     release_threshold: int = 6,
+    bias: float = 0.1,
 ) -> torch.Tensor:
     """Generate ``[batch, seq_len]`` protein token ids via routed ``new_diff`` reverse sampling.
 
-    ``release_threshold`` (tenths of ``num_steps``, enhancer ``sample.py`` parity) controls
-    when the ``(x_t > 0)`` support-mask constraint is released in ``corruption_mode="independent"``:
-    the mask is kept for the first ``release_threshold/10`` of the reverse steps and dropped
-    afterwards, letting previously-zeroed categories re-activate in the final steps. In
-    ``corruption_mode="trajectory"`` the support mask is always applied (monotone constraint).
+    ``release_threshold`` (tenths of ``num_steps``, enhancer ``sample.py`` parity) controls when
+    the Markov constraint is released in ``corruption_mode="independent"``: for the first
+    ``release_threshold/10`` of the reverse steps the step is the monotone Markov one (survival
+    ratio + ``(x_t > 0)`` intersection); afterwards it switches to the non-Markovian corrector
+    step, which re-noises the predicted clean sequence at the training-time i.i.d. Bernoulli rate
+    ``(E[nums] - 1)/vocab + bias`` with no support intersection, so zeroed categories can
+    re-activate. In ``corruption_mode="trajectory"`` the Markov step is always used.
+
+    ``bias`` is an additive floor on that re-activation rate (``sample.py`` uses 0.1 for DNA);
+    set it to 0 for the schedule-exact re-corruption.
     """
     model.eval()
     T = int(num_steps)
@@ -74,21 +80,28 @@ def sample_protein_sequences(
         denominator = torch.clamp(
             _expected_nums(t3, num_classes=vocab, scheduler=bernoulli_scheduler) - 1.0, min=1e-8
         )
-        weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
-        predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
 
-        sample_pred = _sample_bernoulli(predicted, generator=generator)
-        #release_threshold = 6
-        print(release_threshold,"release_threshold",corruption_mode,"corruption_mode")
-        if corruption_mode == "independent":
-            # Keep support mask early, release it in the final steps (enhancer parity).
-            if i <= release_threshold * T // 10:
-                print("release_threshold",i)
-                sample_pred = sample_pred & support_mask
-            else:
-                sample_pred = sample_pred 
+        # Training-matched reverse noise, parallel to ``sample.sample_sequences``: the noise is
+        # DIFFERENT per mode so the intermediate x_t reproduces the corruption each model was
+        # trained on, instead of sharing one ``predicted`` and differing only by the constraint.
+        if corruption_mode == "independent" and i > release_threshold * T // 10:
+            # Non-Markovian corrector phase. Re-noise the predicted clean sequence with the
+            # ACTUAL forward corruption at the next (less-noisy) level. ``train_protein`` /
+            # ``train_simple_protein`` call the Bernoulli corruption with slm_denominator=True,
+            # i.e. every off-target class is included i.i.d. with probability
+            # ``(E[nums] - 1) / vocab`` -- so that, not the conditional survival ratio, is the
+            # rate to reproduce here. No intersection with the current support, which is what
+            # lets dropped classes re-activate (the support can grow again).
+            weight = torch.clamp(nominator / float(vocab) + bias, min=0.0, max=1.0)
+            predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
+            sample_pred = _sample_bernoulli(predicted, generator=generator)
         else:
-            sample_pred = sample_pred & support_mask
+            # Markov / early steps: schedule-calibrated survival of the classes still active,
+            # intersected with the current support so the active set can only shrink.
+            weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
+            predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
+            sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask
+
         sample_pred_sum = sample_pred.sum(dim=-1, keepdim=True)
         fallback = F.one_hot(predicted.argmax(dim=-1), num_classes=vocab).to(dtype=torch.bool)
         sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
@@ -141,6 +154,11 @@ def main() -> None:
         help="Release the (x_t>0) support mask after this many tenths of num_steps "
              "(independent mode only; enhancer sample.py uses 6 = release in the last 40%%).",
     )
+    p.add_argument(
+        "--bias", type=float, default=0.1,
+        help="Additive floor on the corrector-phase re-activation rate (independent mode only). "
+             "0 = schedule-exact re-corruption; sample.py uses 0.1 for DNA.",
+    )
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args()
 
@@ -166,6 +184,7 @@ def main() -> None:
         history_mode=args.history_mode,
         corruption_mode=args.corruption_mode,
         release_threshold=args.release_threshold,
+        bias=args.bias,
     )
     lines = [decode(row.cpu()) for row in ids]
     out_path = Path(args.out)

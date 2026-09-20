@@ -216,9 +216,11 @@ def sample_sequences(
         frames.append(_simplex_to_tokens(x_t))
         support_frames.append(_simplex_to_bitmask(x_t))
     print(bernoulli_scheduler,"bernoulli_scheduler")
-    threshold = 6
+    threshold = 0
     print(threshold,"threshold")
     print(use_cfg,"use_cfg")
+    bias = 0.1
+    print(bias,"bias")
     for i in range(1, num_steps + 1):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(num_steps), device=device, dtype=torch.float32)
         t_start = num_steps - i
@@ -277,7 +279,7 @@ def sample_sequences(
         t3 = t.unsqueeze(-1)
         nominator = _expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0
         denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-8)
-        weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
+        weight = torch.clamp(nominator/denominator, min=0.0, max=1.0)
         one_hot_f = one_hot.to(dtype=weight.dtype)
         predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
         #print(predicted, i,one_hot_f,weight,"predicted")
@@ -327,7 +329,12 @@ def sample_sequences(
             t3 = t.unsqueeze(-1)
             nominator = _expected_nums(t3 - 1.0 / float(num_steps), scheduler=bernoulli_scheduler) - 1.0
             denominator = torch.clamp(_expected_nums(t3, scheduler=bernoulli_scheduler) - 1.0, min=1e-8)
-            weight = torch.clamp(nominator, min=0.0, max=1.0)
+            #print(vocab-1,"vocab-1")
+            #print(nominator/(vocab-1),"nominator/(vocab-1)")
+            #print(nominator,"nominator")
+            #print(denominator,"denominator")
+            
+            weight = torch.clamp(nominator/(vocab-1) +bias, min=0.0, max=1.0)
             one_hot_f = one_hot.to(dtype=weight.dtype)
             predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
             
@@ -337,6 +344,7 @@ def sample_sequences(
             sample_pred = torch.where(sample_pred_sum > 0, sample_pred, fallback)
             x_t = sample_pred.to(dtype=torch.float32)
             x_t = x_t / x_t.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+            
         else:
             support_mask = (x_t > 0)
             sample_pred = _sample_bernoulli(predicted, generator=generator) & support_mask

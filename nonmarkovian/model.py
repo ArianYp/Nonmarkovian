@@ -235,7 +235,9 @@ class RoutedDenoiserCNN(nn.Module):
         if int(self.router_conv_kernel) == 1:
             wc = self.W_cur.weight.squeeze(-1)
             wp = self.W_phi.weight.squeeze(-1)
+            #print("wc", wc.shape, "wp", wp.shape, wp, wc)
             M = wc.transpose(0, 1) @ wp
+            #print("M", M)
             zt_proj = torch.einsum("bli,ij->blj", z_t, M)
             return torch.einsum("blj,bklj->bk", zt_proj, z_cand) * inv_sqrt
 
@@ -254,6 +256,7 @@ class RoutedDenoiserCNN(nn.Module):
         # When router_k >= num_candidates (or k <= 0) this is a no-op → full softmax.
         #e_route = _mask_to_topk_logits(e, self.router_k)
         e_route = e
+        #print(e_route.shape, e_route[0], e_route[1])
         pi_soft = torch.softmax(e_route / tau, dim=-1)
         if self.training:
             pi = F.gumbel_softmax(e_route, tau=tau, dim=-1, hard=False)

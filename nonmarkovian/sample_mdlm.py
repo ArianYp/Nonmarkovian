@@ -113,6 +113,8 @@ def sample_sequences_mdlm(
     if frames is not None:
         frames.append(x.to("cpu", torch.uint8))
     print(independent_threshold, "use_cfg", use_cfg)
+    bias = 0.3
+    print(bias, "bias")
     for i in range(1, T + 1):
         t_val = 1.0 - float(i - 1) / float(T)   # current time   (1.0 -> 1/T)
         s_val = 1.0 - float(i) / float(T)        # next time       (1-1/T -> 0)
@@ -171,7 +173,8 @@ def sample_sequences_mdlm(
             # token can be MASKED AGAIN (and vice-versa) -- the model may undo/revise earlier
             # commitments. mask_prob(s) -> 0 as s -> 0, so this anneals back to a clean sequence.
             p_s = mdlm_mask_prob(s_t, num_classes=C, scheduler=scheduler)
-            remask = u < p_s
+            #print(p_s,"p_s")
+            remask = u < p_s + bias
             x = torch.where(remask, torch.full_like(x, MASK_IDX), sampled)
         else:
             # Carry-over (Markovian): only fill still-masked positions; keep resolved ones frozen.
@@ -183,6 +186,8 @@ def sample_sequences_mdlm(
             frames.append(x.to("cpu", torch.uint8))
 
     # final clean-up: any still-masked positions -> argmax at t -> 0.
+    
+    print(C,"C")
     if (x == MASK_IDX).any():
         t_last = 1.0 / float(T)
         if history_mode == "uniform":

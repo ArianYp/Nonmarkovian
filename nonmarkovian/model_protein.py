@@ -206,8 +206,7 @@ class RoutedDenoiserDiTBFN(nn.Module):
             )
             w_cur = 1.0 + corruption
             w_hist = 1.0 - corruption
-            is_masked = (z_t.max(-1).values < 1.0)
-            ctx = torch.where(is_masked[..., None], w_hist * ctx_mix + w_cur * z_t, z_t)
+            ctx = w_hist * ctx_mix + w_cur * z_t
             pi = pi_hat
 
         seq_in = ctx / ctx.sum(dim=-1, keepdim=True).clamp(min=1e-8)  # [B, L, V] simplex
