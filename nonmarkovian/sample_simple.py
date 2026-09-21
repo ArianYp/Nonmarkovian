@@ -80,8 +80,9 @@ def sample_sequences_simple(
         else:
             null_lab = None  # DiT backbone uses None as the null path
 
-    for i in range(1, num_steps + 1):
+    for i in range(1, num_steps):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(num_steps), device=device, dtype=torch.float32)
+        #print(t,"t")
         if use_cfg:
             logits_c, _ = model(x_t, t.squeeze(-1), labels=labels)
             logits_u, _ = model(x_t, t.squeeze(-1), labels=null_lab)
@@ -97,6 +98,7 @@ def sample_sequences_simple(
         has_any = support_mask.any(dim=-1, keepdim=True)
         support_mask = torch.where(has_any, support_mask, torch.ones_like(support_mask))
         neg_inf = torch.finfo(logits.dtype).min
+        #hat_x0_ids = logits.argmax(dim=-1)
         logits = logits.masked_fill(~support_mask, neg_inf)
 
         model_prob = F.softmax(logits, dim=-1)
@@ -127,7 +129,7 @@ def sample_sequences_simple(
         if frames is not None:
             frames.append(_simplex_to_tokens(x_t))
             support_frames.append(_simplex_to_bitmask(x_t))
-
+    
     t_last = torch.full((batch, 1), 1.0 / float(num_steps), device=device, dtype=torch.float32)
     if use_cfg:
         logits_c, _ = model(x_t, t_last.squeeze(-1), labels=labels)
@@ -137,6 +139,7 @@ def sample_sequences_simple(
     else:
         logits_last, _ = model(x_t, t_last.squeeze(-1), labels=labels)
     final = logits_last.argmax(dim=-1).clamp(max=3)
+    
     if frames is not None:
         frames.append(final.to("cpu", torch.uint8))
         support_frames.append(

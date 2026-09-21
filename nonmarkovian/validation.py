@@ -554,6 +554,7 @@ def compute_fbd_routed(
             generator=gen,
             history_mode=str(getattr(args, "history_mode", "trajectory")),
             corruption_mode=str(getattr(args, "corruption_mode", "trajectory")),
+            bias=getattr(args, "bias", None),
         )
         if collect_sequences is not None:
             collect_sequences.append(g.detach().to("cpu", torch.uint8))

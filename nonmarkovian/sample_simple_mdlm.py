@@ -79,6 +79,7 @@ def sample_sequences_simple_mdlm(
             null_lab = None  # DiT backbone uses None as the null path
     print(use_cfg, "use_cfg")
     for i in range(T):
+        print(i,"i")
         t_val = 1.0 - float(i) / float(T)        # current time  (1.0 -> 1/T)
         s_val = 1.0 - float(i + 1) / float(T)    # next time      (1-1/T -> 0)
         t_b = torch.full((batch,), t_val, device=device, dtype=torch.float32)
@@ -106,7 +107,7 @@ def sample_sequences_simple_mdlm(
             u = torch.rand((batch, seq_len), device=device, dtype=torch.float32)
         else:
             u = torch.rand((batch, seq_len), device=device, dtype=torch.float32, generator=generator)
-        do_unmask =   (u < unmask_prob )
+        do_unmask = is_masked & (u < unmask_prob )
         sampled = _sample_categorical(probs, generator=generator).clamp(max=num_classes - 1)
         x = torch.where(do_unmask, sampled, x)
         if frames is not None:

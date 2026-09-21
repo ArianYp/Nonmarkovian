@@ -561,6 +561,7 @@ def sample_promoter(
     Returns:
         ids: [B, L] LongTensor of predicted nucleotide tokens.
     """
+
     model.eval()
     B     = signal.shape[0]
     T     = int(num_steps)
@@ -576,7 +577,7 @@ def sample_promoter(
     views_buffer = x_t.new_full((B, T, seq_len, C),   1.0 / C)   # [B, T, L, C]
 
     # ── main reverse loop  ─────────────────────────────────────────────────
-    for i in range(1, T + 1):
+    for i in range(1, T ):
         t_val   = 1.0 - float(i - 1) / float(T)   # 1.0 → 1/T  (same as sample.py)
         t_start = T - i                            # T-1 → 0
 

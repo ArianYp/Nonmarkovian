@@ -207,6 +207,11 @@ def main() -> None:
         help="Classifier-free guidance scale w applied at sampling (0 = pure conditional).",
     )
     p.add_argument(
+        "--bias", type=float, default=-1.0,
+        help="Routed-only: additive floor on the corrector-phase re-mask probability in "
+             "sample_mdlm (the hardcoded 0.3). <0 = use the sampler's own default.",
+    )
+    p.add_argument(
         "--router_ablation",
         type=str,
         default="none",
@@ -285,6 +290,8 @@ def main() -> None:
     if cli.seed >= 0:
         overrides["seed"] = int(cli.seed)
     overrides["guidance_scale"] = float(cli.guidance_scale)
+    if cli.bias >= 0.0:
+        overrides["bias"] = float(cli.bias)
     args = _build_args_namespace(cfg, overrides)
 
     # --- model (identical architecture to the Bernoulli builders) ---
@@ -354,6 +361,7 @@ def main() -> None:
         f"scheduler={getattr(args, 'bernoulli_scheduler', 'loglinear')}  "
         f"history_mode={getattr(args, 'history_mode', 'n/a') if trainer == 'routed_mdlm' else 'n/a'}  "
         f"guidance_scale={float(args.guidance_scale)}  "
+        f"bias={getattr(args, 'bias', 'default')}  "
         f"router_ablation={ablation}  "
         f"fbcnn={'yes' if fbcnn is not None else 'no'}  "
         f"trainer={trainer}"

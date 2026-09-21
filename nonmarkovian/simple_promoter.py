@@ -112,7 +112,7 @@ def sample_simple_promoter(
 
     x_t = torch.full((B, seq_len, C), 1.0 / C, device=device, dtype=torch.float32)
 
-    for i in range(1, T + 1):
+    for i in range(1, T):
         t_val = 1.0 - float(i - 1) / float(T)        # 1.0 → 1/T
 
         logits = model(x_t, signal, t_cond=t_val)    # [B, L, 4]

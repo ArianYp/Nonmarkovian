@@ -357,6 +357,7 @@ def compute_fbd_routed_mdlm(
             history_mode=str(getattr(args, "history_mode", "trajectory")),
             corruption_mode=str(getattr(args, "corruption_mode", "independent")),
             independent_threshold=float(getattr(args, "independent_threshold", 0.6)),
+            bias=getattr(args, "bias", None),
         )
         if collect_sequences is not None:
             collect_sequences.append(g.detach().to("cpu", torch.uint8))

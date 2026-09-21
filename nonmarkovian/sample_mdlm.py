@@ -51,6 +51,7 @@ def sample_sequences_mdlm(
     history_mode: str = "trajectory",
     corruption_mode: str = "independent",
     independent_threshold: float = 0.6,
+    bias: float | None = None,
     return_trajectory: bool = False,
     support_constraint: bool = True,
 ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -113,9 +114,10 @@ def sample_sequences_mdlm(
     if frames is not None:
         frames.append(x.to("cpu", torch.uint8))
     print(independent_threshold, "use_cfg", use_cfg)
-    bias = 0.3
+    bias = 0.3 if bias is None else float(bias)
     print(bias, "bias")
-    for i in range(1, T + 1):
+    for i in range(1, T):
+        print(i,"i")
         t_val = 1.0 - float(i - 1) / float(T)   # current time   (1.0 -> 1/T)
         s_val = 1.0 - float(i) / float(T)        # next time       (1-1/T -> 0)
         t_start = T - i                          # T-1 -> 0

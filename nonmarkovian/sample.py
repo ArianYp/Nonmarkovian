@@ -145,6 +145,7 @@ def sample_sequences(
     corruption_mode: str = "trajectory",
     return_trajectory: bool = False,
     support_constraint: bool = True,
+    bias: float | None = None,
 ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """SLM-style ``new_diff`` reverse sampling with routed (history-aware) denoiser.
 
@@ -219,12 +220,12 @@ def sample_sequences(
     threshold = 0
     print(threshold,"threshold")
     print(use_cfg,"use_cfg")
-    bias = 0.1
+    bias = 0.07 if bias is None else float(bias)
     print(bias,"bias")
-    for i in range(1, num_steps + 1):
+    for i in range(1, num_steps):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(num_steps), device=device, dtype=torch.float32)
         t_start = num_steps - i
-
+        #print(i,"i")
         if history_mode == "uniform":
             # True no-history: reset all slots to 1/C at every step so the model
             # only ever sees the current x_t and never accumulates past states.
@@ -357,7 +358,7 @@ def sample_sequences(
         if frames is not None:
             frames.append(_simplex_to_tokens(x_t))
             support_frames.append(_simplex_to_bitmask(x_t))
-
+    
     t_last = torch.full((batch, 1), 1.0 / float(num_steps), device=device, dtype=torch.float32)
     views_buffer = _refresh_views_buffer(
         views_buffer,
@@ -370,6 +371,7 @@ def sample_sequences(
         views_buffer.fill_(1.0 / float(vocab))
     views_buffer[:, 0] = x_t
     if use_cfg:
+        #print("6")
         logits_c, _pi, _h, _lb, _seq_in = model(
             views_buffer, 0, labels=labels, t_cond=float(t_last[0, 0].item())
         )
@@ -379,6 +381,7 @@ def sample_sequences(
         logits_last = (1.0 + guidance_scale) * logits_c - guidance_scale * logits_u
         logits_last = logits_last - torch.logsumexp(logits_last, dim=-1, keepdim=True)
     else:
+        #print("6")
         logits_last, _pi, _h, _lb, _seq_in = model(
             views_buffer, 0, labels=labels, t_cond=float(t_last[0, 0].item())
         )
