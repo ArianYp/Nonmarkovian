@@ -35,7 +35,7 @@ def sample_simple_protein(
     model.eval()
     T = int(num_steps)
     x_t = torch.full((batch, seq_len, vocab), 1.0 / float(vocab), device=device, dtype=torch.float32)
-    for i in range(1, T + 1):
+    for i in range(1, T):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(T), device=device, dtype=torch.float32)
         logits, _h = model(x_t, t.squeeze(-1))
         support_mask = (x_t > 0)

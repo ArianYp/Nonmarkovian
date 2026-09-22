@@ -57,7 +57,7 @@ def sample_protein_sequences(
     # history buffer: uniform everywhere; current x_t written into slot t_start each step.
     views_buffer = x_t.new_full((batch, T, seq_len, vocab), 1.0 / float(vocab))
 
-    for i in range(1, T + 1):
+    for i in range(1, T ):
         t = torch.full((batch, 1), 1.0 - float(i - 1) / float(T), device=device, dtype=torch.float32)
         t_start = T - i
         if history_mode == "uniform":
@@ -92,7 +92,7 @@ def sample_protein_sequences(
             # ``(E[nums] - 1) / vocab`` -- so that, not the conditional survival ratio, is the
             # rate to reproduce here. No intersection with the current support, which is what
             # lets dropped classes re-activate (the support can grow again).
-            weight = torch.clamp(nominator / float(vocab) + bias, min=0.0, max=1.0)
+            weight = torch.clamp(nominator / float(vocab-1) + bias, min=0.0, max=1.0)
             predicted = torch.clamp(model_prob + weight * (1.0 - model_prob), min=0.0, max=1.0)
             sample_pred = _sample_bernoulli(predicted, generator=generator)
         else:
